@@ -11,6 +11,16 @@ public class PortfolioAnalysisResult
     public DateTime AnalyzedAt { get; set; }
     public int TotalHoldings { get; set; }
     public int ImpactsAnalyzed { get; set; }
+    public PortfolioSummary Summary { get; set; } = new();
+}
+
+public class PortfolioSummary
+{
+    public string OverallAdvice { get; set; } = string.Empty;
+    public string Rationale { get; set; } = string.Empty;
+    public string MarketSentiment { get; set; } = string.Empty;
+    public List<string> KeyActions { get; set; } = new();
+    public string RiskAssessment { get; set; } = string.Empty;
 }
 
 public class RebalanceRecommendation
@@ -24,6 +34,9 @@ public class RebalanceRecommendation
     public string SourceTier { get; set; } = string.Empty;
     public double AverageImpactScore { get; set; }
     public int NewsCount { get; set; }
+
+    // PHASE 4A: Historical analogs for evidence-based recommendations
+    public Models.AnalogData? Analogs { get; set; }
 }
 
 public enum RecommendationType

@@ -63,7 +63,8 @@ public class ImpactsController : ControllerBase
                     i.Article.Summary,
                     i.Article.SourceUrl,
                     i.Article.Publisher,
-                    i.Article.PublishedAt
+                    i.Article.PublishedAt,
+                    i.Article.SourceTier
                 },
                 Holding = new
                 {
@@ -115,6 +116,7 @@ public class ImpactsController : ControllerBase
                     i.Article.SourceUrl,
                     i.Article.Publisher,
                     i.Article.PublishedAt,
+                    i.Article.SourceTier,
                     Signal = i.Article.Signal != null ? new
                     {
                         i.Article.Signal.Sentiment,

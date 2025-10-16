@@ -18,6 +18,16 @@ public class Holding
 
     public decimal? CostBasis { get; set; }
 
+    /// <summary>
+    /// Date when position was first acquired (for holding period tracking)
+    /// </summary>
+    public DateTime? AcquiredAt { get; set; }
+
+    /// <summary>
+    /// User's intent/strategy for this holding (Trade, Accumulate, Income, Hold)
+    /// </summary>
+    public HoldingIntent Intent { get; set; } = HoldingIntent.Hold;
+
     public DateTime AddedAt { get; set; } = DateTime.UtcNow;
 
     public DateTime? UpdatedAt { get; set; }

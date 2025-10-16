@@ -78,6 +78,8 @@ public class HoldingsController : ControllerBase
             Ticker = request.Ticker.ToUpper(),
             Shares = request.Shares,
             CostBasis = request.CostBasis,
+            AcquiredAt = request.AcquiredAt ?? DateTime.UtcNow,
+            Intent = request.Intent ?? HoldingIntent.Hold,
             AddedAt = DateTime.UtcNow
         };
 
@@ -105,6 +107,17 @@ public class HoldingsController : ControllerBase
 
         holding.Shares = request.Shares;
         holding.CostBasis = request.CostBasis;
+
+        if (request.AcquiredAt.HasValue)
+        {
+            holding.AcquiredAt = request.AcquiredAt.Value;
+        }
+
+        if (request.Intent.HasValue)
+        {
+            holding.Intent = request.Intent.Value;
+        }
+
         holding.UpdatedAt = DateTime.UtcNow;
 
         await _context.SaveChangesAsync();
@@ -131,5 +144,17 @@ public class HoldingsController : ControllerBase
     }
 }
 
-public record CreateHoldingRequest(string Ticker, decimal Shares, decimal? CostBasis);
-public record UpdateHoldingRequest(decimal Shares, decimal? CostBasis);
+public record CreateHoldingRequest(
+    string Ticker,
+    decimal Shares,
+    decimal? CostBasis,
+    DateTime? AcquiredAt = null,
+    HoldingIntent? Intent = null
+);
+
+public record UpdateHoldingRequest(
+    decimal Shares,
+    decimal? CostBasis,
+    DateTime? AcquiredAt = null,
+    HoldingIntent? Intent = null
+);

@@ -76,8 +76,22 @@ public class ImpactCalculator : IImpactCalculator
             // Ensure exposure is between 0 and 1
             exposure = Math.Clamp(exposure, 0, 1);
 
-            // Calculate impact score: direction × magnitude × confidence × exposure
-            decimal impactScore = signal.Sentiment * signal.Magnitude * signal.Confidence * exposure;
+            // **PHASE 2 ENHANCEMENT: Apply concentration adjustment**
+            // Positions >15% of portfolio get 1.2x weight to highlight concentration risk/opportunity
+            decimal concentrationMultiplier = 1.0m;
+            if (exposure > 0.15m)
+            {
+                concentrationMultiplier = 1.2m;
+                _logger.LogInformation(
+                    "Concentrated position detected for user {UserId}, ticker {Ticker}: {Exposure:P1}. Applying 1.2x multiplier.",
+                    holding.UserId, holding.Ticker, exposure);
+            }
+
+            // Calculate base exposure with concentration adjustment
+            decimal adjustedExposure = Math.Min(1.0m, exposure * concentrationMultiplier);
+
+            // Calculate impact score: direction × magnitude × confidence × adjusted exposure
+            decimal impactScore = signal.Sentiment * signal.Magnitude * signal.Confidence * adjustedExposure;
 
             var impact = new Impact
             {

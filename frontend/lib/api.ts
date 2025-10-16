@@ -5,11 +5,23 @@ export interface User {
   token: string;
 }
 
+export type RiskProfile = 'Conservative' | 'Balanced' | 'Aggressive';
+export type HoldingIntent = 'Trade' | 'Accumulate' | 'Income' | 'Hold';
+export type SourceTier = 'Unknown' | 'Premium' | 'Standard' | 'Social' | 'Official';
+
+export interface UserProfile {
+  riskProfile: RiskProfile;
+  cashBuffer?: number;
+  createdAt: string;
+}
+
 export interface Holding {
   id: number;
   ticker: string;
   shares: number;
   costBasis: number;
+  acquiredAt?: string;
+  intent: HoldingIntent;
   addedAt: string;
 }
 
@@ -26,6 +38,7 @@ export interface Impact {
     sourceUrl?: string;
     publisher?: string;
     publishedAt: string;
+    sourceTier?: SourceTier;
   };
   holding: {
     id: number;
@@ -44,6 +57,39 @@ export interface ImpactsResponse {
   };
 }
 
+export interface AnalogData {
+  count: number;
+  pattern: string;
+  medianMove5D?: number;
+  medianMove30D?: number;
+}
+
+// PHASE 4B: Portfolio Analytics Types
+export interface PortfolioMetrics {
+  totalValue: number;
+  concentrationIndex: number;
+  largestPosition?: { Item1: string; Item2: number };
+  topConcentrations: Array<{ Item1: string; Item2: number }>;
+}
+
+export interface IntentMetrics {
+  intent: HoldingIntent;
+  count: number;
+  totalValue: number;
+  averageExposure: number;
+  averageHoldingPeriodDays: number;
+}
+
+export interface HoldingPerformance {
+  holdingId: number;
+  ticker: string;
+  holdingPeriodDays: number;
+  totalImpactScore: number;
+  positiveImpactsCount: number;
+  negativeImpactsCount: number;
+  intent: HoldingIntent;
+}
+
 export interface RebalanceRecommendation {
   ticker: string;
   action: 'StrongBuy' | 'Buy' | 'Hold' | 'Sell' | 'StrongSell';
@@ -54,6 +100,16 @@ export interface RebalanceRecommendation {
   sourceTier: string;
   averageImpactScore: number;
   newsCount: number;
+  // PHASE 4A: Historical analogs for evidence-based recommendations
+  analogs?: AnalogData | null;
+}
+
+export interface PortfolioSummary {
+  overallAdvice: string;
+  rationale: string;
+  marketSentiment: string;
+  keyActions: string[];
+  riskAssessment: string;
 }
 
 export interface AnalysisResult {
@@ -61,6 +117,7 @@ export interface AnalysisResult {
   analyzedAt: string;
   totalHoldings: number;
   impactsAnalyzed: number;
+  summary: PortfolioSummary;
 }
 
 class ApiClient {
@@ -88,9 +145,9 @@ class ApiClient {
   }
 
   private async fetch(endpoint: string, options: RequestInit = {}) {
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...(options.headers as Record<string, string>),
     };
 
     const token = this.getToken();
@@ -146,15 +203,50 @@ class ApiClient {
     return await this.login(demoEmail, demoPassword);
   }
 
+  // Profile
+  async getProfile(): Promise<UserProfile> {
+    return await this.fetch('/api/profile');
+  }
+
+  async updateProfile(riskProfile?: RiskProfile, cashBuffer?: number | null): Promise<UserProfile> {
+    return await this.fetch('/api/profile', {
+      method: 'PUT',
+      body: JSON.stringify({
+        riskProfile,
+        cashBuffer,
+        clearCashBuffer: cashBuffer === null,
+      }),
+    });
+  }
+
   // Holdings
   async getHoldings(): Promise<Holding[]> {
     return await this.fetch('/api/holdings');
   }
 
-  async addHolding(ticker: string, shares: number, costBasis: number): Promise<Holding> {
+  async addHolding(
+    ticker: string,
+    shares: number,
+    costBasis: number,
+    acquiredAt?: string,
+    intent?: HoldingIntent
+  ): Promise<Holding> {
     return await this.fetch('/api/holdings', {
       method: 'POST',
-      body: JSON.stringify({ ticker, shares, costBasis }),
+      body: JSON.stringify({ ticker, shares, costBasis, acquiredAt, intent }),
+    });
+  }
+
+  async updateHolding(
+    id: number,
+    shares: number,
+    costBasis: number,
+    acquiredAt?: string,
+    intent?: HoldingIntent
+  ): Promise<Holding> {
+    return await this.fetch(`/api/holdings/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ shares, costBasis, acquiredAt, intent }),
     });
   }
 
@@ -170,7 +262,7 @@ class ApiClient {
     formData.append('image', file);
 
     const token = this.getToken();
-    const headers: HeadersInit = {};
+    const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
@@ -220,6 +312,19 @@ class ApiClient {
   // Analysis
   async getRebalanceSuggestions(): Promise<AnalysisResult> {
     return await this.fetch('/api/analysis/rebalance-suggestions');
+  }
+
+  // PHASE 4B: Portfolio Analytics
+  async getPortfolioMetrics(): Promise<PortfolioMetrics> {
+    return await this.fetch('/api/portfolio/metrics');
+  }
+
+  async getIntentMetrics(): Promise<Record<HoldingIntent, IntentMetrics>> {
+    return await this.fetch('/api/portfolio/intent-metrics');
+  }
+
+  async getHoldingPerformance(holdingId: number): Promise<HoldingPerformance> {
+    return await this.fetch(`/api/portfolio/holding-performance/${holdingId}`);
   }
 }
 

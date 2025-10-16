@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SignalCopilot.Api.Data;
@@ -11,9 +12,11 @@ using SignalCopilot.Api.Data;
 namespace SignalCopilot.Api.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251016111753_EnhanceSignalQuality")]
+    partial class EnhanceSignalQuality
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -211,9 +214,6 @@ namespace SignalCopilot.Api.Migrations
                     b.Property<int>("AccessFailedCount")
                         .HasColumnType("integer");
 
-                    b.Property<decimal?>("CashBuffer")
-                        .HasColumnType("numeric");
-
                     b.Property<string>("ConcurrencyStamp")
                         .IsConcurrencyToken()
                         .HasColumnType("text");
@@ -253,9 +253,6 @@ namespace SignalCopilot.Api.Migrations
 
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
-
-                    b.Property<int>("RiskProfile")
-                        .HasColumnType("integer");
 
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
@@ -352,18 +349,12 @@ namespace SignalCopilot.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<DateTime?>("AcquiredAt")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime>("AddedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<decimal?>("CostBasis")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
-
-                    b.Property<int>("Intent")
-                        .HasColumnType("integer");
 
                     b.Property<decimal>("Shares")
                         .HasPrecision(18, 8)

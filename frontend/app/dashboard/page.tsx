@@ -1,8 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { api, Holding, Impact, AnalysisResult, RebalanceRecommendation } from '@/lib/api';
+import { api, Holding, Impact, AnalysisResult, RebalanceRecommendation, UserProfile, HoldingIntent, PortfolioMetrics, IntentMetrics } from '@/lib/api';
 import { useRouter } from 'next/navigation';
+import ProfileSetup from '@/components/ProfileSetup';
+import EvidencePill, { AnalogTooltip } from '@/components/EvidencePill';
+import PortfolioContext from '@/components/PortfolioContext';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -18,34 +21,99 @@ export default function Dashboard() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [showRationale, setShowRationale] = useState(false);
+  const [expandedRecommendations, setExpandedRecommendations] = useState<Set<number>>(new Set());
+
+  // Profile state
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [showProfileSetup, setShowProfileSetup] = useState(false);
+  const [showProfileBanner, setShowProfileBanner] = useState(false);
+
+  // PHASE 4B: Portfolio analytics state
+  const [portfolioMetrics, setPortfolioMetrics] = useState<PortfolioMetrics | null>(null);
+  const [intentMetrics, setIntentMetrics] = useState<Record<HoldingIntent, IntentMetrics> | null>(null);
 
   // Add holding form
   const [showAddForm, setShowAddForm] = useState(false);
-  const [newHolding, setNewHolding] = useState({ ticker: '', shares: '', costBasis: '' });
+  const [newHolding, setNewHolding] = useState({
+    ticker: '',
+    shares: '',
+    costBasis: '',
+    acquiredAt: '',
+    intent: 'Hold' as HoldingIntent,
+  });
 
   useEffect(() => {
     loadData();
   }, [currentPage]);
 
+  const loadProfile = async () => {
+    try {
+      const profileData = await api.getProfile();
+      setProfile(profileData);
+
+      // Check if profile banner should be shown (stored in localStorage)
+      const bannerDismissed = localStorage.getItem('profileBannerDismissed');
+      if (!bannerDismissed) {
+        setShowProfileBanner(true);
+      }
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+      // Profile doesn't exist yet, show banner
+      const bannerDismissed = localStorage.getItem('profileBannerDismissed');
+      if (!bannerDismissed) {
+        setShowProfileBanner(true);
+      }
+    }
+  };
+
+  // PHASE 4B: Load portfolio analytics
+  const loadPortfolioAnalytics = async () => {
+    try {
+      const [metrics, intents] = await Promise.all([
+        api.getPortfolioMetrics(),
+        api.getIntentMetrics(),
+      ]);
+      setPortfolioMetrics(metrics);
+      setIntentMetrics(intents);
+    } catch (error) {
+      console.error('Failed to load portfolio analytics:', error);
+    }
+  };
+
   const loadData = async () => {
     try {
       const [holdingsData, impactsData] = await Promise.all([
         api.getHoldings(),
-        api.getImpacts(currentPage, pageSize)
+        api.getImpacts(currentPage, pageSize),
       ]);
       setHoldings(holdingsData);
       setImpacts(impactsData.impacts);
       setTotalPages(impactsData.pagination.totalPages);
       setLoading(false);
 
-      // Load analysis if we have holdings
+      // Load profile
+      await loadProfile();
+
+      // PHASE 4B: Load portfolio analytics if we have holdings
       if (holdingsData.length > 0) {
         loadAnalysis();
+        loadPortfolioAnalytics();
       }
     } catch (error) {
       console.error('Failed to load data:', error);
       router.push('/');
     }
+  };
+
+  const handleProfileSetupClose = async () => {
+    setShowProfileSetup(false);
+    await loadProfile(); // Reload profile after saving
+  };
+
+  const handleDismissBanner = () => {
+    setShowProfileBanner(false);
+    localStorage.setItem('profileBannerDismissed', 'true');
   };
 
   const loadAnalysis = async () => {
@@ -142,9 +210,11 @@ export default function Dashboard() {
       await api.addHolding(
         newHolding.ticker.toUpperCase(),
         parseFloat(newHolding.shares),
-        parseFloat(newHolding.costBasis)
+        parseFloat(newHolding.costBasis),
+        newHolding.acquiredAt || undefined,
+        newHolding.intent
       );
-      setNewHolding({ ticker: '', shares: '', costBasis: '' });
+      setNewHolding({ ticker: '', shares: '', costBasis: '', acquiredAt: '', intent: 'Hold' });
       setShowAddForm(false);
       await loadData();
 
@@ -159,8 +229,26 @@ export default function Dashboard() {
     }
   };
 
+  const handleUpdateHoldingIntent = async (holdingId: number, intent: HoldingIntent) => {
+    const holding = holdings.find((h) => h.id === holdingId);
+    if (!holding) return;
+
+    try {
+      await api.updateHolding(
+        holdingId,
+        holding.shares,
+        holding.costBasis,
+        holding.acquiredAt,
+        intent
+      );
+      await loadData();
+    } catch (error) {
+      console.error('Failed to update holding intent:', error);
+      alert('Failed to update holding intent.');
+    }
+  };
+
   const handleDeleteHolding = async (id: number) => {
-    if (!confirm('Are you sure you want to remove this holding?')) return;
     try {
       await api.deleteHolding(id);
       await loadData();
@@ -190,9 +278,9 @@ export default function Dashboard() {
 
   const getImpactColor = (score: number) => {
     if (score > 0.5) return 'text-green-600 bg-green-50';
-    if (score > 0) return 'text-green-500 bg-green-50/50';
+    if (score > 0) return 'text-green-500 bg-green-50 bg-opacity-50';
     if (score < -0.5) return 'text-red-600 bg-red-50';
-    if (score < 0) return 'text-red-500 bg-red-50/50';
+    if (score < 0) return 'text-red-500 bg-red-50 bg-opacity-50';
     return 'text-gray-500 bg-gray-50';
   };
 
@@ -242,6 +330,16 @@ export default function Dashboard() {
     }
   };
 
+  const toggleRecommendationExpand = (index: number) => {
+    const newExpanded = new Set(expandedRecommendations);
+    if (newExpanded.has(index)) {
+      newExpanded.delete(index);
+    } else {
+      newExpanded.add(index);
+    }
+    setExpandedRecommendations(newExpanded);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -253,13 +351,76 @@ export default function Dashboard() {
     );
   }
 
+  const getRiskProfileEmoji = (riskProfile: string) => {
+    switch (riskProfile) {
+      case 'Conservative':
+        return '🛡️';
+      case 'Aggressive':
+        return '🚀';
+      default:
+        return '⚖️';
+    }
+  };
+
+  const getIntentEmoji = (intent: HoldingIntent) => {
+    switch (intent) {
+      case 'Trade':
+        return '🎯';
+      case 'Accumulate':
+        return '📈';
+      case 'Income':
+        return '💰';
+      default:
+        return '🔒';
+    }
+  };
+
+  const getSourceTierBadge = (tier?: string) => {
+    if (!tier || tier === 'Unknown') return null;
+
+    const tiers = {
+      Premium: { label: 'Premium', color: 'bg-purple-100 text-purple-800 border-purple-300' },
+      Standard: { label: 'Standard', color: 'bg-blue-100 text-blue-800 border-blue-300' },
+      Official: { label: 'Official', color: 'bg-green-100 text-green-800 border-green-300' },
+      Social: { label: 'Social', color: 'bg-gray-100 text-gray-800 border-gray-300' },
+    };
+
+    const config = tiers[tier as keyof typeof tiers];
+    if (!config) return null;
+
+    return (
+      <span className={`px-2 py-0.5 rounded text-xs font-medium border ${config.color}`}>
+        {config.label}
+      </span>
+    );
+  };
+
   return (
-    <div className="h-screen bg-gray-50 flex flex-col overflow-hidden">
+    <div className="min-h-screen bg-gray-50">
+      {/* Profile Setup Modal */}
+      <ProfileSetup
+        isOpen={showProfileSetup}
+        onClose={handleProfileSetupClose}
+        currentRiskProfile={profile?.riskProfile}
+        currentCashBuffer={profile?.cashBuffer}
+      />
+
       {/* Header - Fixed */}
-      <div className="bg-white border-b border-gray-200 flex-shrink-0">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">Signal Copilot</h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">Signal Copilot</h1>
+              {profile && (
+                <button
+                  onClick={() => setShowProfileSetup(true)}
+                  className="text-sm px-3 py-1 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors flex items-center gap-1"
+                >
+                  <span>{getRiskProfileEmoji(profile.riskProfile)}</span>
+                  <span className="text-slate-700 font-medium">{profile.riskProfile}</span>
+                </button>
+              )}
+            </div>
             <button
               onClick={handleRefreshNews}
               disabled={refreshing}
@@ -269,12 +430,41 @@ export default function Dashboard() {
             </button>
           </div>
         </div>
+
+        {/* Profile Banner */}
+        {showProfileBanner && (
+          <div className="bg-blue-50 border-b border-blue-200">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <span className="text-blue-600 text-xl">ℹ️</span>
+                  <p className="text-sm text-blue-900">
+                    <strong>Want better recommendations?</strong> Tell us about your investment style
+                  </p>
+                  <button
+                    onClick={() => setShowProfileSetup(true)}
+                    className="text-sm font-semibold text-blue-600 hover:text-blue-800 underline"
+                  >
+                    Set Preferences
+                  </button>
+                </div>
+                <button
+                  onClick={handleDismissBanner}
+                  className="text-blue-400 hover:text-blue-600 transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Main Content - Scrollable */}
-      <div className="flex-1 overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 h-full">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 h-full">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
             {/* Portfolio Section */}
             <div className="lg:col-span-1 h-full overflow-hidden">
               <div className="bg-white rounded-lg shadow h-full flex flex-col">
@@ -358,6 +548,24 @@ export default function Dashboard() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
                         required
                       />
+                      <label className="block text-xs text-gray-600 mb-1">Acquisition Date (Optional)</label>
+                      <input
+                        type="date"
+                        value={newHolding.acquiredAt}
+                        onChange={(e) => setNewHolding({ ...newHolding, acquiredAt: e.target.value })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 text-sm"
+                      />
+                      <label className="block text-xs text-gray-600 mb-1">Investment Intent</label>
+                      <select
+                        value={newHolding.intent}
+                        onChange={(e) => setNewHolding({ ...newHolding, intent: e.target.value as HoldingIntent })}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                      >
+                        <option value="Trade">🎯 Trade</option>
+                        <option value="Accumulate">📈 Accumulate</option>
+                        <option value="Income">💰 Income</option>
+                        <option value="Hold">🔒 Hold</option>
+                      </select>
                       <button
                         type="submit"
                         className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-md"
@@ -385,19 +593,34 @@ export default function Dashboard() {
                       </p>
                     ) : (
                       holdings.map((holding) => (
-                        <div key={holding.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                          <div>
-                            <p className="font-semibold text-gray-900">{holding.ticker}</p>
-                            <p className="text-sm text-gray-600">
-                              {holding.shares} shares @ ${holding.costBasis}
-                            </p>
+                        <div key={holding.id} className="p-3 bg-gray-50 rounded-lg">
+                          <div className="flex justify-between items-start mb-2">
+                            <div className="flex-1">
+                              <p className="font-semibold text-gray-900">{holding.ticker}</p>
+                              <p className="text-sm text-gray-600">
+                                {holding.shares} shares @ ${holding.costBasis}
+                              </p>
+                            </div>
+                            <button
+                              onClick={() => handleDeleteHolding(holding.id)}
+                              className="text-red-500 hover:text-red-600"
+                            >
+                              🗑️
+                            </button>
                           </div>
-                          <button
-                            onClick={() => handleDeleteHolding(holding.id)}
-                            className="text-red-500 hover:text-red-600"
-                          >
-                            🗑️
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-500">Intent:</label>
+                            <select
+                              value={holding.intent}
+                              onChange={(e) => handleUpdateHoldingIntent(holding.id, e.target.value as HoldingIntent)}
+                              className="text-xs px-2 py-1 border border-gray-300 rounded bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none"
+                            >
+                              <option value="Trade">🎯 Trade</option>
+                              <option value="Accumulate">📈 Accumulate</option>
+                              <option value="Income">💰 Income</option>
+                              <option value="Hold">🔒 Hold</option>
+                            </select>
+                          </div>
                         </div>
                       ))
                     )}
@@ -406,79 +629,27 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right Column - Analysis and Impacts */}
-            <div className="lg:col-span-3 h-full overflow-hidden flex flex-col gap-8">
-              {/* Portfolio Analysis Section */}
-              {analysis && analysis.recommendations.length > 0 && (
-                <div className="bg-white rounded-lg shadow flex flex-col max-h-[40%]">
-                  {/* Analysis Header */}
-                  <div className="p-6 border-b border-gray-200 flex-shrink-0">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis</h2>
-                      <div className="text-sm text-gray-500">
-                        {analysis.impactsAnalyzed} impacts analyzed
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Analysis List - Scrollable */}
-                  <div className="flex-1 overflow-y-auto p-6">
-                    <div className="space-y-4">
-                      {analysis.recommendations.map((rec, index) => (
-                        <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex items-center gap-3">
-                              <span className="font-bold text-lg text-gray-900">{rec.ticker}</span>
-                              <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getActionColor(rec.action)}`}>
-                                {getActionLabel(rec.action)}
-                              </span>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-xs text-gray-500">Confidence</div>
-                              <div className="text-sm font-semibold text-gray-900">
-                                {(rec.confidenceScore * 100).toFixed(0)}%
-                              </div>
-                            </div>
-                          </div>
-
-                          <p className="text-sm font-medium text-gray-900 mb-2">{rec.suggestion}</p>
-                          <p className="text-sm text-gray-600 mb-3">{rec.reasoning}</p>
-
-                          <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500">
-                            <span className="px-2 py-1 bg-gray-100 rounded">
-                              {rec.sourceTier} Sources
-                            </span>
-                            <span className="px-2 py-1 bg-gray-100 rounded">
-                              {rec.newsCount} articles
-                            </span>
-                            {rec.keySignals.length > 0 && (
-                              <>
-                                <span>•</span>
-                                {rec.keySignals.map((signal, i) => (
-                                  <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 rounded">
-                                    {signal}
-                                  </span>
-                                ))}
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+            {/* Right Column - Impacts and Analysis */}
+            <div className="lg:col-span-3 space-y-8">
+              {/* PHASE 4B: Portfolio Context Section */}
+              {portfolioMetrics && intentMetrics && holdings.length > 0 && (
+                <PortfolioContext
+                  metrics={portfolioMetrics}
+                  intentMetrics={intentMetrics}
+                  riskProfile={profile?.riskProfile}
+                  cashBuffer={profile?.cashBuffer}
+                />
               )}
 
-              {/* Impacts Section */}
-              <div className="h-full overflow-hidden flex-1">
-                <div className="bg-white rounded-lg shadow h-full flex flex-col">
-                  {/* Impact Feed Header */}
-                  <div className="p-6 border-b border-gray-200 flex-shrink-0">
-                    <h2 className="text-lg font-semibold text-gray-900">Impact Feed</h2>
-                  </div>
+              {/* Impact Feed Section */}
+              <div className="bg-white rounded-lg shadow">
+                {/* Impact Feed Header */}
+                <div className="p-6 border-b border-gray-200">
+                  <h2 className="text-lg font-semibold text-gray-900">Impact Feed</h2>
+                </div>
 
                 {impacts.length === 0 ? (
-                  <div className="flex-1 flex items-center justify-center p-6">
+                  <div className="p-12">
                     <div className="text-center">
                       <p className="text-gray-500 mb-4">No impacts yet.</p>
                       <p className="text-sm text-gray-400">
@@ -488,19 +659,20 @@ export default function Dashboard() {
                   </div>
                 ) : (
                   <>
-                    {/* Impacts List - Scrollable Area */}
-                    <div className="flex-1 overflow-y-auto p-6">
+                    {/* Impacts List */}
+                    <div className="p-6">
                       <div className="space-y-4">
                         {impacts.map((impact) => (
                           <div key={impact.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                             <div className="flex justify-between items-start mb-2">
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-gray-900">{impact.article.ticker}</span>
                                 <span className={`px-2 py-1 rounded text-sm font-semibold ${getImpactColor(impact.impactScore)}`}>
                                   {impact.impactScore > 0 ? '+' : ''}{impact.impactScore.toFixed(4)}
                                 </span>
+                                {getSourceTierBadge(impact.article.sourceTier)}
                               </div>
-                              <span className="text-xs text-gray-500">
+                              <span className="text-xs text-gray-500 flex-shrink-0">
                                 {new Date(impact.article.publishedAt).toLocaleDateString()}
                               </span>
                             </div>
@@ -535,9 +707,9 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Pagination - Fixed at Bottom */}
+                    {/* Pagination */}
                     {totalPages > 1 && (
-                      <div className="flex items-center justify-between border-t border-gray-200 p-6 flex-shrink-0">
+                      <div className="flex items-center justify-between border-t border-gray-200 p-6">
                         <button
                           onClick={handlePreviousPage}
                           disabled={currentPage === 1}
@@ -559,12 +731,155 @@ export default function Dashboard() {
                     )}
                   </>
                 )}
-                </div>
               </div>
+
+              {/* Portfolio Analysis Section */}
+              {analysis && analysis.summary && (
+                <div className="bg-white rounded-lg shadow flex flex-col">
+                  {/* Analysis Header */}
+                  <div className="p-6 border-b border-gray-200 flex-shrink-0">
+                    <div className="flex justify-between items-center">
+                      <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis & Recommendations</h2>
+                      <div className="text-sm text-gray-500">
+                        {analysis.impactsAnalyzed} impacts analyzed
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Analysis Content - Scrollable */}
+                  <div className="flex-1 overflow-y-auto p-6">
+                    {/* Portfolio Summary Section */}
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="font-semibold text-blue-900 mb-1">Overall Portfolio Advice</h3>
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                            analysis.summary.marketSentiment.includes('Positive')
+                              ? 'bg-green-100 text-green-800'
+                              : analysis.summary.marketSentiment.includes('Negative')
+                              ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {analysis.summary.marketSentiment} Market
+                          </span>
+                        </div>
+                      </div>
+
+                      <p className="text-gray-800 mb-4 leading-relaxed">{analysis.summary.overallAdvice}</p>
+
+                      {/* Key Actions */}
+                      <div className="mb-4">
+                        <h4 className="font-semibold text-sm text-blue-900 mb-2">Recommended Actions:</h4>
+                        <ul className="space-y-2">
+                          {analysis.summary.keyActions.map((action, i) => (
+                            <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                              <span className="text-blue-600 mt-1">•</span>
+                              <span>{action}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      {/* Risk Assessment */}
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded">
+                        <h4 className="font-semibold text-sm text-amber-900 mb-1">Risk Assessment:</h4>
+                        <p className="text-sm text-amber-800">{analysis.summary.riskAssessment}</p>
+                      </div>
+
+                      {/* Expandable Rationale */}
+                      <button
+                        onClick={() => setShowRationale(!showRationale)}
+                        className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                      >
+                        {showRationale ? '▼' : '▶'} View Detailed Rationale
+                      </button>
+
+                      {showRationale && (
+                        <div className="mt-3 p-4 bg-white rounded border border-blue-200">
+                          <div className="text-sm text-gray-700 whitespace-pre-line">
+                            {analysis.summary.rationale}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Individual Recommendations */}
+                    {analysis.recommendations.length > 0 && (
+                      <div>
+                        <h3 className="font-semibold text-gray-900 mb-3">Individual Stock Recommendations</h3>
+                        <div className="space-y-3">
+                          {analysis.recommendations.map((rec, index) => (
+                            <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                              <div className="flex justify-between items-start mb-2">
+                                <div className="flex items-center gap-3">
+                                  <span className="font-bold text-lg text-gray-900">{rec.ticker}</span>
+                                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${getActionColor(rec.action)}`}>
+                                    {getActionLabel(rec.action)}
+                                  </span>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-xs text-gray-500">Confidence</div>
+                                  <div className="text-sm font-semibold text-gray-900">
+                                    {(rec.confidenceScore * 100).toFixed(0)}%
+                                  </div>
+                                </div>
+                              </div>
+
+                              <p className="text-sm font-medium text-gray-900 mb-2">{rec.suggestion}</p>
+
+                              {/* PHASE 4A: Evidence Pills */}
+                              <EvidencePill
+                                analogs={rec.analogs}
+                                confidence={rec.confidenceScore}
+                                sourceTier={rec.sourceTier}
+                              />
+
+                              <button
+                                onClick={() => toggleRecommendationExpand(index)}
+                                className="text-xs text-blue-600 hover:text-blue-800 mb-2 mt-3"
+                              >
+                                {expandedRecommendations.has(index) ? '▼ Hide details' : '▶ Show reasoning'}
+                              </button>
+
+                              {expandedRecommendations.has(index) && (
+                                <div className="mt-2 p-3 bg-gray-50 rounded border border-gray-200">
+                                  <p className="text-sm text-gray-700 mb-2">{rec.reasoning}</p>
+
+                                  {/* Show detailed analog pattern if available */}
+                                  {rec.analogs && rec.analogs.count > 0 && (
+                                    <AnalogTooltip analogs={rec.analogs} />
+                                  )}
+                                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-500 mt-2">
+                                    <span className="px-2 py-1 bg-gray-100 rounded">
+                                      {rec.sourceTier} Sources
+                                    </span>
+                                    <span className="px-2 py-1 bg-gray-100 rounded">
+                                      {rec.newsCount} articles
+                                    </span>
+                                    {rec.keySignals.length > 0 && (
+                                      <>
+                                        <span>•</span>
+                                        {rec.keySignals.map((signal, i) => (
+                                          <span key={i} className="px-2 py-1 bg-blue-50 text-blue-700 rounded">
+                                            {signal}
+                                          </span>
+                                        ))}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    </div>
   );
 }

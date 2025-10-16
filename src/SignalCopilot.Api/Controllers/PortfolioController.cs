@@ -12,13 +12,16 @@ namespace SignalCopilot.Api.Controllers;
 public class PortfolioController : ControllerBase
 {
     private readonly IImageProcessor _imageProcessor;
+    private readonly IPortfolioAnalytics _portfolioAnalytics;
     private readonly ILogger<PortfolioController> _logger;
 
     public PortfolioController(
         IImageProcessor imageProcessor,
+        IPortfolioAnalytics portfolioAnalytics,
         ILogger<PortfolioController> logger)
     {
         _imageProcessor = imageProcessor;
+        _portfolioAnalytics = portfolioAnalytics;
         _logger = logger;
     }
 
@@ -78,6 +81,68 @@ public class PortfolioController : ControllerBase
         {
             _logger.LogError(ex, "Error processing portfolio image");
             return StatusCode(500, new { message = "Error processing image. Please try again." });
+        }
+    }
+
+    // PHASE 4B: Portfolio Analytics Endpoints
+
+    /// <summary>
+    /// Get overall portfolio metrics (concentration, exposures, etc.)
+    /// </summary>
+    [HttpGet("metrics")]
+    public async Task<IActionResult> GetPortfolioMetrics()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var metrics = await _portfolioAnalytics.GetPortfolioMetricsAsync(userId);
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving portfolio metrics");
+            return StatusCode(500, new { message = "Error retrieving portfolio metrics" });
+        }
+    }
+
+    /// <summary>
+    /// Get intent-specific metrics (Trade, Accumulate, Income, Hold)
+    /// </summary>
+    [HttpGet("intent-metrics")]
+    public async Task<IActionResult> GetIntentMetrics()
+    {
+        try
+        {
+            var userId = GetUserId();
+            var metrics = await _portfolioAnalytics.GetAllIntentMetricsAsync(userId);
+            return Ok(metrics);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving intent metrics");
+            return StatusCode(500, new { message = "Error retrieving intent metrics" });
+        }
+    }
+
+    /// <summary>
+    /// Get performance metrics for a specific holding
+    /// </summary>
+    [HttpGet("holding-performance/{holdingId}")]
+    public async Task<IActionResult> GetHoldingPerformance(int holdingId)
+    {
+        try
+        {
+            var performance = await _portfolioAnalytics.GetHoldingPerformanceAsync(holdingId);
+            return Ok(performance);
+        }
+        catch (ArgumentException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving holding performance for {HoldingId}", holdingId);
+            return StatusCode(500, new { message = "Error retrieving holding performance" });
         }
     }
 }

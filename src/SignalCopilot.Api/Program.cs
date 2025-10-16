@@ -58,16 +58,42 @@ builder.Services.AddHangfire(config =>
 builder.Services.AddHangfireServer();
 
 // Add application services
-builder.Services.AddHttpClient<SignalCopilot.Api.Services.INewsService, SignalCopilot.Api.Services.NewsApiService>(client =>
+
+// News providers (multi-source architecture)
+builder.Services.AddHttpClient<SignalCopilot.Api.Services.News.NewsApiProvider>(client =>
 {
     client.DefaultRequestHeaders.Add("User-Agent", "SignalCopilot/1.0");
 });
+builder.Services.AddScoped<SignalCopilot.Api.Services.News.INewsProvider, SignalCopilot.Api.Services.News.NewsApiProvider>(sp =>
+    sp.GetRequiredService<SignalCopilot.Api.Services.News.NewsApiProvider>());
+
+builder.Services.AddHttpClient<SignalCopilot.Api.Services.News.FinnhubProvider>(client =>
+{
+    client.DefaultRequestHeaders.Add("User-Agent", "SignalCopilot/1.0");
+});
+builder.Services.AddScoped<SignalCopilot.Api.Services.News.INewsProvider, SignalCopilot.Api.Services.News.FinnhubProvider>(sp =>
+    sp.GetRequiredService<SignalCopilot.Api.Services.News.FinnhubProvider>());
+
+// News aggregation service
+builder.Services.AddScoped<SignalCopilot.Api.Services.News.NewsAggregationService>();
+
+// Legacy news service (now uses aggregation)
+builder.Services.AddScoped<SignalCopilot.Api.Services.INewsService, SignalCopilot.Api.Services.NewsApiService>();
+
 builder.Services.AddHttpClient<SignalCopilot.Api.Services.IImageProcessor, SignalCopilot.Api.Services.ClaudeImageProcessor>();
+
+// Add new analytics and personalization services
+builder.Services.AddScoped<SignalCopilot.Api.Services.IConsensusCalculator, SignalCopilot.Api.Services.ConsensusCalculator>();
+builder.Services.AddScoped<SignalCopilot.Api.Services.IPortfolioAnalytics, SignalCopilot.Api.Services.PortfolioAnalytics>();
+
 builder.Services.AddScoped<SignalCopilot.Api.Services.ISentimentAnalyzer, SignalCopilot.Api.Services.SentimentAnalyzer>();
 builder.Services.AddScoped<SignalCopilot.Api.Services.IImpactCalculator, SignalCopilot.Api.Services.ImpactCalculator>();
 builder.Services.AddScoped<SignalCopilot.Api.Services.IAlertService, SignalCopilot.Api.Services.AlertService>();
 builder.Services.AddScoped<SignalCopilot.Api.Services.IPortfolioAnalyzer, SignalCopilot.Api.Services.PortfolioAnalyzer>();
 builder.Services.AddScoped<SignalCopilot.Api.Services.BackgroundJobsService>();
+
+// PHASE 4A: Historical analogs service for evidence-based recommendations
+builder.Services.AddScoped<SignalCopilot.Api.Services.IHistoricalAnalogService, SignalCopilot.Api.Services.HistoricalAnalogService>();
 
 // Add controllers
 builder.Services.AddControllers();
