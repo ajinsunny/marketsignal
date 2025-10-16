@@ -1,0 +1,83 @@
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using SignalCopilot.Api.Services;
+using System.Security.Claims;
+using Hangfire;
+
+namespace SignalCopilot.Api.Controllers;
+
+[Authorize]
+[ApiController]
+[Route("api/[controller]")]
+public class PortfolioController : ControllerBase
+{
+    private readonly IImageProcessor _imageProcessor;
+    private readonly ILogger<PortfolioController> _logger;
+
+    public PortfolioController(
+        IImageProcessor imageProcessor,
+        ILogger<PortfolioController> logger)
+    {
+        _imageProcessor = imageProcessor;
+        _logger = logger;
+    }
+
+    private string GetUserId()
+    {
+        return User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+            ?? throw new UnauthorizedAccessException("User not authenticated");
+    }
+
+    [HttpPost("upload-image")]
+    public async Task<IActionResult> UploadPortfolioImage([FromForm] IFormFile image)
+    {
+        if (image == null || image.Length == 0)
+        {
+            return BadRequest(new { message = "No image provided" });
+        }
+
+        // Validate file size (max 10MB)
+        if (image.Length > 10 * 1024 * 1024)
+        {
+            return BadRequest(new { message = "Image too large. Maximum size is 10MB." });
+        }
+
+        // Validate content type
+        var allowedTypes = new[] { "image/jpeg", "image/jpg", "image/png", "image/gif", "image/webp" };
+        if (!allowedTypes.Contains(image.ContentType.ToLower()))
+        {
+            return BadRequest(new { message = "Invalid image format. Allowed formats: JPEG, PNG, GIF, WebP" });
+        }
+
+        try
+        {
+            // Read image data
+            byte[] imageData;
+            using (var memoryStream = new MemoryStream())
+            {
+                await image.CopyToAsync(memoryStream);
+                imageData = memoryStream.ToArray();
+            }
+
+            _logger.LogInformation("Processing uploaded image for ticker extraction. Size: {Size} bytes", imageData.Length);
+
+            // Extract tickers from image
+            var tickers = await _imageProcessor.ExtractTickersFromImageAsync(imageData, image.ContentType);
+
+            if (!tickers.Any())
+            {
+                return Ok(new { tickers = new List<string>(), message = "No ticker symbols found in image" });
+            }
+
+            _logger.LogInformation("Successfully extracted {Count} tickers: {Tickers}",
+                tickers.Count, string.Join(", ", tickers));
+
+            return Ok(new { tickers });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error processing portfolio image");
+            return StatusCode(500, new { message = "Error processing image. Please try again." });
+        }
+    }
+}

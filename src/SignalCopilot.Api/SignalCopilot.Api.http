@@ -1,0 +1,6 @@
+@SignalCopilot.Api_HostAddress = http://localhost:5076
+
+GET {{SignalCopilot.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
