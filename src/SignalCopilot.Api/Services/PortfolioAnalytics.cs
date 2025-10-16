@@ -46,7 +46,7 @@ public class PortfolioAnalytics : IPortfolioAnalytics
                 TotalValue = 0,
                 ConcentrationIndex = 0,
                 LargestPosition = null,
-                TopConcentrations = new List<(string Ticker, decimal ExposurePct)>()
+                TopConcentrations = new List<PositionData>()
             };
         }
 
@@ -61,7 +61,7 @@ public class PortfolioAnalytics : IPortfolioAnalytics
                 TotalValue = 0,
                 ConcentrationIndex = 0,
                 LargestPosition = null,
-                TopConcentrations = new List<(string Ticker, decimal ExposurePct)>()
+                TopConcentrations = new List<PositionData>()
             };
         }
 
@@ -79,10 +79,11 @@ public class PortfolioAnalytics : IPortfolioAnalytics
 
         // Top 3 concentrations
         var topConcentrations = holdings
-            .Select(h => (
-                Ticker: h.Ticker,
-                ExposurePct: (decimal)(h.Shares * (h.CostBasis ?? 0)) / totalValue
-            ))
+            .Select(h => new PositionData
+            {
+                Ticker = h.Ticker,
+                ExposurePct = (decimal)(h.Shares * (h.CostBasis ?? 0)) / totalValue
+            })
             .OrderByDescending(x => x.ExposurePct)
             .Take(3)
             .ToList();
@@ -91,7 +92,11 @@ public class PortfolioAnalytics : IPortfolioAnalytics
         {
             TotalValue = totalValue,
             ConcentrationIndex = concentrationIndex,
-            LargestPosition = (largestPosition.Ticker, largestExposure),
+            LargestPosition = new PositionData
+            {
+                Ticker = largestPosition.Ticker,
+                ExposurePct = largestExposure
+            },
             TopConcentrations = topConcentrations
         };
     }
@@ -262,9 +267,18 @@ public class PortfolioMetrics
     /// </summary>
     public decimal ConcentrationIndex { get; set; }
 
-    public (string Ticker, decimal ExposurePct)? LargestPosition { get; set; }
+    public PositionData? LargestPosition { get; set; }
 
-    public List<(string Ticker, decimal ExposurePct)> TopConcentrations { get; set; } = new();
+    public List<PositionData> TopConcentrations { get; set; } = new();
+}
+
+/// <summary>
+/// Position data for concentration analysis
+/// </summary>
+public class PositionData
+{
+    public string Ticker { get; set; } = string.Empty;
+    public decimal ExposurePct { get; set; }
 }
 
 /// <summary>

@@ -68,8 +68,8 @@ export interface AnalogData {
 export interface PortfolioMetrics {
   totalValue: number;
   concentrationIndex: number;
-  largestPosition?: { Item1: string; Item2: number };
-  topConcentrations: Array<{ Item1: string; Item2: number }>;
+  largestPosition?: { ticker: string; exposurePct: number };
+  topConcentrations: Array<{ ticker: string; exposurePct: number }>;
 }
 
 export interface IntentMetrics {
@@ -176,14 +176,21 @@ class ApiClient {
   async register(email: string, password: string) {
     return await this.fetch('/api/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, confirmPassword: password }),
+      body: JSON.stringify({
+        Email: email,
+        Password: password,
+        Timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      }),
     });
   }
 
   async login(email: string, password: string): Promise<User> {
     const response = await this.fetch('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        Email: email,
+        Password: password
+      }),
     });
     this.setToken(response.token);
     return response;
@@ -212,9 +219,9 @@ class ApiClient {
     return await this.fetch('/api/profile', {
       method: 'PUT',
       body: JSON.stringify({
-        riskProfile,
-        cashBuffer,
-        clearCashBuffer: cashBuffer === null,
+        RiskProfile: riskProfile,
+        CashBuffer: cashBuffer,
+        ClearCashBuffer: cashBuffer === null,
       }),
     });
   }
@@ -233,7 +240,13 @@ class ApiClient {
   ): Promise<Holding> {
     return await this.fetch('/api/holdings', {
       method: 'POST',
-      body: JSON.stringify({ ticker, shares, costBasis, acquiredAt, intent }),
+      body: JSON.stringify({
+        Ticker: ticker,
+        Shares: shares,
+        CostBasis: costBasis,
+        AcquiredAt: acquiredAt,
+        Intent: intent
+      }),
     });
   }
 
@@ -246,7 +259,12 @@ class ApiClient {
   ): Promise<Holding> {
     return await this.fetch(`/api/holdings/${id}`, {
       method: 'PUT',
-      body: JSON.stringify({ shares, costBasis, acquiredAt, intent }),
+      body: JSON.stringify({
+        Shares: shares,
+        CostBasis: costBasis,
+        AcquiredAt: acquiredAt,
+        Intent: intent
+      }),
     });
   }
 

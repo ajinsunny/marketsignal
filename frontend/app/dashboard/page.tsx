@@ -405,7 +405,7 @@ export default function Dashboard() {
         currentCashBuffer={profile?.cashBuffer}
       />
 
-      {/* Header - Fixed */}
+      {/* Header - Sticky */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex justify-between items-center">
@@ -462,26 +462,27 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Main Content - Scrollable */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-            {/* Portfolio Section */}
-            <div className="lg:col-span-1 h-full overflow-hidden">
-              <div className="bg-white rounded-lg shadow h-full flex flex-col">
+      {/* Main Content - Normal Scrollable Layout */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="flex flex-col lg:flex-row gap-4">
+          {/* Portfolio Section - Fixed Width Sidebar with Max Height */}
+          <div className="w-full lg:w-80 flex-shrink-0">
+            <div className="bg-white rounded-lg shadow sticky top-20 flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+
                 {/* Portfolio Header & Controls */}
-                <div className="p-6 border-b border-gray-200 flex-shrink-0">
-                  <div className="flex justify-between items-center mb-4">
-                    <h2 className="text-lg font-semibold text-gray-900">Your Portfolio</h2>
+                <div className="p-4 border-b border-gray-200 flex-shrink-0">
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-base font-semibold text-gray-900">Your Portfolio</h2>
                     <button
                       onClick={() => setShowAddForm(!showAddForm)}
-                      className="text-blue-500 hover:text-blue-600 text-2xl"
+                      className="text-blue-500 hover:text-blue-600 text-xl"
                     >
                       {showAddForm ? '✕' : '+'}
                     </button>
                   </div>
 
-                  {/* Image Upload with Drag & Drop */}
-                  <div className="mb-4">
+                  {/* Image Upload with Drag & Drop - Compact */}
+                  <div className="mb-3">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -495,7 +496,7 @@ export default function Dashboard() {
                       onDragOver={handleDragOver}
                       onDragLeave={handleDragLeave}
                       onDrop={handleDrop}
-                      className={`block w-full px-4 py-3 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
+                      className={`block w-full px-3 py-2 border-2 border-dashed rounded-lg text-center cursor-pointer transition-colors ${
                         dragging
                           ? 'border-blue-500 bg-blue-50'
                           : 'border-gray-300 hover:border-blue-500'
@@ -503,18 +504,18 @@ export default function Dashboard() {
                     >
                       {uploading ? (
                         <div>
-                          <div className="text-2xl mb-1">⏳</div>
-                          <span className="text-sm text-gray-600">Processing image...</span>
+                          <div className="text-lg mb-0.5">⏳</div>
+                          <span className="text-xs text-gray-600">Processing...</span>
                         </div>
                       ) : dragging ? (
                         <div>
-                          <div className="text-2xl mb-1">📥</div>
-                          <span className="text-sm text-blue-600">Drop image here</span>
+                          <div className="text-lg mb-0.5">📥</div>
+                          <span className="text-xs text-blue-600">Drop here</span>
                         </div>
                       ) : (
                         <div>
-                          <div className="text-2xl mb-1">📷</div>
-                          <span className="text-sm text-gray-600">Upload or Drop Portfolio Screenshot</span>
+                          <div className="text-lg mb-0.5">📷</div>
+                          <span className="text-xs text-gray-600">Upload Screenshot</span>
                         </div>
                       )}
                     </label>
@@ -575,18 +576,18 @@ export default function Dashboard() {
                     </form>
                   )}
 
-                  {/* Total Value */}
-                  <div className="p-4 bg-blue-50 rounded-lg">
-                    <p className="text-sm text-gray-600">Total Value</p>
-                    <p className="text-2xl font-bold text-gray-900">
+                  {/* Total Value - Compact */}
+                  <div className="p-3 bg-blue-50 rounded-lg">
+                    <p className="text-xs text-gray-600">Total Value</p>
+                    <p className="text-lg font-bold text-gray-900">
                       ${calculatePortfolioValue().toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </p>
                   </div>
                 </div>
 
                 {/* Holdings List - Scrollable Area */}
-                <div className="flex-1 overflow-y-auto p-6">
-                  <div className="space-y-3">
+                <div className="flex-1 overflow-y-auto p-4">
+                  <div className="space-y-2">
                     {holdings.length === 0 ? (
                       <p className="text-gray-500 text-center py-8">
                         No holdings yet. Upload a portfolio screenshot or add stocks manually!
@@ -629,9 +630,9 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right Column - Impacts and Analysis */}
-            <div className="lg:col-span-3 space-y-8">
-              {/* PHASE 4B: Portfolio Context Section */}
+            {/* Right Column - Main Content (Normal Scrolling) */}
+            <div className="flex-1 space-y-4">
+              {/* Portfolio Overview */}
               {portfolioMetrics && intentMetrics && holdings.length > 0 && (
                 <PortfolioContext
                   metrics={portfolioMetrics}
@@ -640,7 +641,6 @@ export default function Dashboard() {
                   cashBuffer={profile?.cashBuffer}
                 />
               )}
-
               {/* Impact Feed Section */}
               <div className="bg-white rounded-lg shadow">
                 {/* Impact Feed Header */}
@@ -735,19 +735,19 @@ export default function Dashboard() {
 
               {/* Portfolio Analysis Section */}
               {analysis && analysis.summary && (
-                <div className="bg-white rounded-lg shadow flex flex-col">
-                  {/* Analysis Header */}
-                  <div className="p-6 border-b border-gray-200 flex-shrink-0">
-                    <div className="flex justify-between items-center">
-                      <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis & Recommendations</h2>
-                      <div className="text-sm text-gray-500">
-                        {analysis.impactsAnalyzed} impacts analyzed
+                <div className="bg-white rounded-lg shadow">
+                    {/* Analysis Header */}
+                    <div className="p-6 border-b border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <h2 className="text-lg font-semibold text-gray-900">Portfolio Analysis & Recommendations</h2>
+                        <div className="text-sm text-gray-500">
+                          {analysis.impactsAnalyzed} impacts analyzed
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Analysis Content - Scrollable */}
-                  <div className="flex-1 overflow-y-auto p-6">
+                    {/* Analysis Content */}
+                    <div className="p-6">
                     {/* Portfolio Summary Section */}
                     <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="flex items-start justify-between mb-3">

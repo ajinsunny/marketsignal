@@ -554,24 +554,168 @@ public class PortfolioAnalyzer : IPortfolioAnalyzer
         else
             summary.MarketSentiment = "Neutral/Mixed";
 
-        // Generate overall advice
+        // Generate overall advice with detailed, holding-specific guidance
         var bullishCount = strongBuys + buys;
         var bearishCount = strongSells + sells;
 
+        var adviceBuilder = new System.Text.StringBuilder();
+
         if (bullishCount > bearishCount && bullishCount >= recommendations.Count * 0.4)
         {
-            summary.OverallAdvice = $"Your portfolio is experiencing predominantly positive market signals across {bullishCount} holdings. " +
-                $"Based on your personalized exposure levels, consider strategically increasing positions in high-conviction opportunities.";
+            // BULLISH MARKET SENTIMENT
+            adviceBuilder.Append($"**Market Sentiment Analysis:** Your portfolio is experiencing predominantly positive momentum across {bullishCount} of {recommendations.Count} holdings. ");
+            adviceBuilder.Append($"The weighted impact score of +{weightedImpact:F2} indicates bullish market conditions for your positions. ");
+
+            // Specific ticker guidance
+            var topBullish = recommendations
+                .Where(r => r.Action == RecommendationType.StrongBuy || r.Action == RecommendationType.Buy)
+                .OrderByDescending(r => r.AverageImpactScore)
+                .Take(3)
+                .ToList();
+
+            if (topBullish.Any())
+            {
+                adviceBuilder.Append($"**Strong Opportunities:** ");
+                foreach (var rec in topBullish)
+                {
+                    var actionType = rec.Action == RecommendationType.StrongBuy ? "Strong Buy" : "Buy";
+                    adviceBuilder.Append($"{rec.Ticker} ({actionType}, Impact: +{rec.AverageImpactScore:F2}, Confidence: {rec.ConfidenceScore:P0}) - {rec.KeySignals.FirstOrDefault() ?? "positive signals"}; ");
+                }
+            }
+
+            // Mixed signals explanation
+            if (bearishCount > 0)
+            {
+                var topBearish = recommendations
+                    .Where(r => r.Action == RecommendationType.Sell || r.Action == RecommendationType.StrongSell)
+                    .OrderBy(r => r.AverageImpactScore)
+                    .Take(2)
+                    .ToList();
+
+                adviceBuilder.Append($"**Caution Areas:** While overall sentiment is positive, {bearishCount} positions show weakness: ");
+                foreach (var rec in topBearish)
+                {
+                    adviceBuilder.Append($"{rec.Ticker} (Impact: {rec.AverageImpactScore:F2}) showing negative pressure - {rec.Suggestion}; ");
+                }
+            }
+
+            // Rebalancing guidance
+            adviceBuilder.Append($"**Rebalancing Strategy:** Focus capital on your strongest performers ({string.Join(", ", topBullish.Take(2).Select(r => r.Ticker))}). ");
+            if (bearishCount > 0)
+            {
+                adviceBuilder.Append($"Consider trimming underperformers to fund position increases in high-conviction opportunities. ");
+            }
+            adviceBuilder.Append($"Average confidence of {avgConfidence:P0} suggests these signals are backed by reliable sources.");
+
+            summary.OverallAdvice = adviceBuilder.ToString();
         }
         else if (bearishCount > bullishCount && bearishCount >= recommendations.Count * 0.4)
         {
-            summary.OverallAdvice = $"Your portfolio faces notable headwinds with negative signals across {bearishCount} holdings. " +
-                $"Given your current exposure levels, consider reducing risk by trimming underperforming positions and reallocating to stronger performers.";
+            // BEARISH MARKET SENTIMENT
+            adviceBuilder.Append($"**Market Sentiment Analysis:** Your portfolio is facing notable headwinds with negative signals across {bearishCount} of {recommendations.Count} holdings. ");
+            adviceBuilder.Append($"The weighted impact score of {weightedImpact:F2} indicates bearish pressure on your positions. ");
+
+            // Specific ticker guidance
+            var topBearish = recommendations
+                .Where(r => r.Action == RecommendationType.StrongSell || r.Action == RecommendationType.Sell)
+                .OrderBy(r => r.AverageImpactScore)
+                .Take(3)
+                .ToList();
+
+            if (topBearish.Any())
+            {
+                adviceBuilder.Append($"**Risk Mitigation Required:** ");
+                foreach (var rec in topBearish)
+                {
+                    var actionType = rec.Action == RecommendationType.StrongSell ? "Strong Sell" : "Reduce";
+                    adviceBuilder.Append($"{rec.Ticker} ({actionType}, Impact: {rec.AverageImpactScore:F2}, Confidence: {rec.ConfidenceScore:P0}) - {rec.KeySignals.FirstOrDefault() ?? "negative signals"}; ");
+                }
+            }
+
+            // Mixed signals explanation
+            if (bullishCount > 0)
+            {
+                var topBullish = recommendations
+                    .Where(r => r.Action == RecommendationType.Buy || r.Action == RecommendationType.StrongBuy)
+                    .OrderByDescending(r => r.AverageImpactScore)
+                    .Take(2)
+                    .ToList();
+
+                adviceBuilder.Append($"**Bright Spots:** Despite overall bearish sentiment, {bullishCount} positions show resilience: ");
+                foreach (var rec in topBullish)
+                {
+                    adviceBuilder.Append($"{rec.Ticker} (Impact: +{rec.AverageImpactScore:F2}) showing positive momentum - consider as reallocation target; ");
+                }
+            }
+
+            // Rebalancing guidance
+            adviceBuilder.Append($"**Rebalancing Strategy:** Prioritize risk reduction by trimming positions in {string.Join(", ", topBearish.Take(2).Select(r => r.Ticker))}. ");
+            if (bullishCount > 0)
+            {
+                adviceBuilder.Append($"Reallocate capital to stronger performers showing positive signals. ");
+            }
+            else
+            {
+                adviceBuilder.Append($"Consider raising cash levels until market conditions improve. ");
+            }
+            adviceBuilder.Append($"Average confidence of {avgConfidence:P0} suggests action is warranted based on signal quality.");
+
+            summary.OverallAdvice = adviceBuilder.ToString();
         }
         else
         {
-            summary.OverallAdvice = $"Your portfolio shows mixed signals with balanced positive and negative indicators. " +
-                $"Based on your exposure profile, maintain current positions while monitoring for clearer directional trends.";
+            // MIXED/NEUTRAL MARKET SENTIMENT
+            adviceBuilder.Append($"**Market Sentiment Analysis:** Your portfolio shows mixed signals with {bullishCount} positive positions balanced against {bearishCount} negative positions and {holds} neutral holdings. ");
+            adviceBuilder.Append($"The weighted impact score of {weightedImpact:F2} indicates no clear directional trend. ");
+
+            // Explain the nuances of mixed signals
+            adviceBuilder.Append($"**Understanding Mixed Signals:** This balanced reading suggests market uncertainty or sector-specific divergence. ");
+
+            // Positive holdings
+            var topBullish = recommendations
+                .Where(r => r.Action == RecommendationType.StrongBuy || r.Action == RecommendationType.Buy)
+                .OrderByDescending(r => r.AverageImpactScore)
+                .Take(2)
+                .ToList();
+
+            if (topBullish.Any())
+            {
+                adviceBuilder.Append($"Your stronger positions are: ");
+                foreach (var rec in topBullish)
+                {
+                    adviceBuilder.Append($"{rec.Ticker} (Impact: +{rec.AverageImpactScore:F2}, {rec.KeySignals.FirstOrDefault() ?? "positive"}); ");
+                }
+            }
+
+            // Negative holdings
+            var topBearish = recommendations
+                .Where(r => r.Action == RecommendationType.Sell || r.Action == RecommendationType.StrongSell)
+                .OrderBy(r => r.AverageImpactScore)
+                .Take(2)
+                .ToList();
+
+            if (topBearish.Any())
+            {
+                adviceBuilder.Append($"while facing headwinds in: ");
+                foreach (var rec in topBearish)
+                {
+                    adviceBuilder.Append($"{rec.Ticker} (Impact: {rec.AverageImpactScore:F2}, {rec.KeySignals.FirstOrDefault() ?? "negative"}); ");
+                }
+            }
+
+            // Holding-specific rebalancing guidance
+            adviceBuilder.Append($"**Rebalancing Strategy:** In mixed markets, focus on position-specific actions rather than broad portfolio moves. ");
+
+            if (topBullish.Any() && topBearish.Any())
+            {
+                adviceBuilder.Append($"Incrementally shift capital from underperformers ({string.Join(", ", topBearish.Take(2).Select(r => r.Ticker))}) to outperformers ({string.Join(", ", topBullish.Take(2).Select(r => r.Ticker))}). ");
+            }
+
+            adviceBuilder.Append($"Maintain current allocation levels for the {holds} holdings with neutral signals - these provide stability while trends clarify. ");
+
+            adviceBuilder.Append($"Monitor daily for trend emergence; with {avgConfidence:P0} average confidence, wait for stronger conviction (>60%) before making major position adjustments.");
+
+            summary.OverallAdvice = adviceBuilder.ToString();
         }
 
         // Generate detailed rationale

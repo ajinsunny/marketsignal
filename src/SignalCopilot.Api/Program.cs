@@ -95,8 +95,12 @@ builder.Services.AddScoped<SignalCopilot.Api.Services.BackgroundJobsService>();
 // PHASE 4A: Historical analogs service for evidence-based recommendations
 builder.Services.AddScoped<SignalCopilot.Api.Services.IHistoricalAnalogService, SignalCopilot.Api.Services.HistoricalAnalogService>();
 
-// Add controllers
-builder.Services.AddControllers();
+// Add controllers with JSON configuration for enums
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+    {
+        options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter());
+    });
 
 // Add CORS
 builder.Services.AddCors(options =>

@@ -125,9 +125,9 @@ export default function PortfolioContext({
           <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
             <div className="text-xs text-gray-600 mb-1">Largest Position</div>
             <div className="flex items-center justify-between">
-              <span className="font-bold text-gray-900">{metrics.largestPosition.Item1}</span>
+              <span className="font-bold text-gray-900">{metrics.largestPosition.ticker}</span>
               <span className="text-sm font-semibold text-gray-700">
-                {(metrics.largestPosition.Item2 * 100).toFixed(1)}%
+                {(metrics.largestPosition.exposurePct * 100).toFixed(1)}%
               </span>
             </div>
           </div>
@@ -139,16 +139,16 @@ export default function PortfolioContext({
             <div className="text-xs font-semibold text-gray-600">Top Holdings</div>
             {metrics.topConcentrations.map((pos, idx) => (
               <div key={idx} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">{pos.Item1}</span>
+                <span className="text-gray-700">{pos.ticker}</span>
                 <div className="flex items-center gap-2">
                   <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-blue-500"
-                      style={{ width: `${Math.min(pos.Item2 * 100, 100)}%` }}
+                      style={{ width: `${Math.min(pos.exposurePct * 100, 100)}%` }}
                     />
                   </div>
                   <span className="text-xs font-semibold text-gray-600 w-12 text-right">
-                    {(pos.Item2 * 100).toFixed(1)}%
+                    {(pos.exposurePct * 100).toFixed(1)}%
                   </span>
                 </div>
               </div>
