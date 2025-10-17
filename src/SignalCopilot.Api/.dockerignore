@@ -1,0 +1,65 @@
+# .dockerignore for SignalCopilot.Api
+# Excludes unnecessary files from Docker build context
+
+# Build outputs
+bin/
+obj/
+out/
+
+# NuGet packages
+*.nupkg
+*.snupkg
+packages/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.userprefs
+
+# IDE files
+.vs/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Database
+*.db
+*.db-shm
+*.db-wal
+
+# Environment files
+appsettings.Development.json
+appsettings.*.json
+!appsettings.json
+!appsettings.Production.json
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+DEPLOYMENT.md
+
+# Test files
+**/*Tests/
+**/*.Tests/
+**/TestResults/
+
+# Migration scripts (migrations applied separately)
+Migrations/
+
+# Hangfire storage (external database)
+Hangfire/

@@ -5,6 +5,10 @@
 
 # dotenv files
 .env
+.env.local
+.env.*.local
+!.env.example
+!.env.production
 
 # User-specific files
 *.rsuser
@@ -482,3 +486,113 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Next.js (Frontend)
+frontend/.next/
+frontend/out/
+frontend/build/
+frontend/dist/
+frontend/.turbo/
+
+# Frontend dependencies
+frontend/node_modules/
+
+# Production config (use templates instead)
+appsettings.Development.json
+!appsettings.json
+!appsettings.Production.json
+
+# ============================================
+# AWS Deployment - SENSITIVE FILES
+# ============================================
+# Deployment info files (contain passwords and secrets!)
+deployment-info.txt
+aws-deployment-info*.txt
+*deployment-info*.txt
+
+# Environment files with actual values
+.aws-env
+.env.production.local
+.env.development.local
+
+# Temporary AWS files
+/tmp/trust-policy.json
+/tmp/db-password.txt
+trust-policy.json
+
+# AWS CDK generated files
+infrastructure/cdk.out/
+infrastructure/.cdk.staging/
+infrastructure/cdk.context.json
+*.js.map
+
+# ============================================
+# Docker & Container Files
+# ============================================
+# Docker temporary files
+.dockerignore.local
+docker-compose.override.yml
+
+# ============================================
+# Database Files
+# ============================================
+# Database backups and dumps
+*.sql
+*.dump
+*.backup
+*.bak
+
+# SQLite databases (if used for testing)
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+
+# ============================================
+# Secrets & Credentials
+# ============================================
+# API keys and secrets files
+secrets.json
+credentials.json
+*secret*.txt
+*password*.txt
+*apikey*.txt
+
+# SSL certificates
+*.pem
+*.key
+*.crt
+*.cer
+*.p12
+
+# ============================================
+# Temporary & Log Files
+# ============================================
+# Application logs
+*.log.*
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# ============================================
+# IDE & Editor Files
+# ============================================
+# Cursor / AI editor
+.cursor/
+
+# ============================================
+# Keep These Template Files
+# ============================================
+# These are config templates, not actual configs
+!railway.json
+!vercel.json
+!amplify.yml
+!apprunner.yaml
+!.env.example
+!.aws-env.example

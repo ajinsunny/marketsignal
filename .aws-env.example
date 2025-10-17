@@ -1,0 +1,101 @@
+# AWS Environment Variables Template
+# Copy these to your AWS services (App Runner, Amplify, etc.)
+
+# ============================================
+# App Runner Environment Variables (Backend)
+# ============================================
+
+# ASP.NET Core Configuration
+ASPNETCORE_ENVIRONMENT=Production
+ASPNETCORE_URLS=http://+:8080
+
+# Database Connection
+# Replace with your RDS endpoint, username, and password
+ConnectionStrings__DefaultConnection=Host=YOUR_RDS_ENDPOINT.rds.amazonaws.com;Port=5432;Database=signalcopilot;Username=postgres;Password=YOUR_DB_PASSWORD;SslMode=Require
+
+# JWT Authentication
+# Generate with: openssl rand -base64 32
+JwtSettings__SecretKey=YOUR_GENERATED_JWT_SECRET_KEY_32_CHARS_MIN
+JwtSettings__Issuer=SignalCopilot.Api
+JwtSettings__Audience=SignalCopilot.Client
+JwtSettings__ExpirationMinutes=1440
+
+# CORS Configuration
+# Replace with your AWS Amplify URL
+AllowedOrigins=https://master.YOUR_AMPLIFY_APP_ID.amplifyapp.com
+
+# Hangfire Configuration
+Hangfire__DashboardEnabled=true
+Hangfire__RequireAuthentication=false
+
+# News API Providers (Optional)
+DataSources__NewsApi__ApiKey=your_newsapi_key_here
+DataSources__NewsApi__Enabled=false
+DataSources__Finnhub__ApiKey=your_finnhub_key_here
+DataSources__Finnhub__Enabled=false
+DataSources__OpenAI__ApiKey=your_openai_key_here
+DataSources__OpenAI__Enabled=false
+
+# Email Service (Optional)
+# Use Amazon SES or SendGrid
+SendGrid__ApiKey=your_sendgrid_key_here
+SendGrid__FromEmail=noreply@yourdomain.com
+SendGrid__FromName=Signal Copilot
+
+# Logging
+Logging__LogLevel__Default=Information
+Logging__LogLevel__Microsoft.AspNetCore=Warning
+
+# ============================================
+# AWS Amplify Environment Variables (Frontend)
+# ============================================
+
+# Backend API URL
+# Replace with your App Runner service URL
+NEXT_PUBLIC_API_URL=https://YOUR_APP_RUNNER_ID.us-east-1.awsapprunner.com
+
+# ============================================
+# AWS Secrets Manager (Recommended for Production)
+# ============================================
+
+# Instead of setting sensitive values directly as environment variables,
+# store them in AWS Secrets Manager and reference them:
+
+# Example Secrets Manager secrets:
+# Secret Name: signalcopilot/database
+# Secret Value: { "connectionString": "Host=...;Password=..." }
+
+# Secret Name: signalcopilot/jwt
+# Secret Value: { "secretKey": "YOUR_JWT_SECRET" }
+
+# Secret Name: signalcopilot/api-keys
+# Secret Value: { "newsApi": "...", "finnhub": "...", "openai": "..." }
+
+# Then in App Runner, reference secrets:
+# ConnectionStrings__DefaultConnection=arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:signalcopilot/database
+# JwtSettings__SecretKey=arn:aws:secretsmanager:us-east-1:ACCOUNT_ID:secret:signalcopilot/jwt
+
+# ============================================
+# Quick Command to Generate Secrets
+# ============================================
+
+# Generate JWT secret:
+# openssl rand -base64 32
+
+# Generate strong database password:
+# openssl rand -base64 16
+
+# ============================================
+# Set via AWS CLI
+# ============================================
+
+# Update App Runner environment variables:
+# aws apprunner update-service \
+#   --service-arn YOUR_SERVICE_ARN \
+#   --source-configuration file://apprunner-config.json
+
+# Update Amplify environment variables:
+# aws amplify update-branch \
+#   --app-id YOUR_APP_ID \
+#   --branch-name master \
+#   --environment-variables NEXT_PUBLIC_API_URL=https://YOUR_URL

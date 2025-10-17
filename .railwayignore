@@ -1,0 +1,29 @@
+# .railwayignore - files to exclude from Railway deployment
+
+# Frontend (deployed separately on Vercel)
+frontend/
+
+# Documentation
+*.md
+!README.md
+
+# Git
+.git/
+.github/
+
+# IDE
+.vscode/
+.vs/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+**/*Tests/
+**/TestResults/
+
+# Development files
+*.user
+*.suo

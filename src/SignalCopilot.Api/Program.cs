@@ -107,9 +107,25 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        var allowedOrigins = builder.Configuration["AllowedOrigins"];
+        if (!string.IsNullOrEmpty(allowedOrigins))
+        {
+            // Production: Use specific origins
+            var origins = allowedOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(o => o.Trim())
+                .ToArray();
+            policy.WithOrigins(origins)
+                  .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .AllowCredentials();
+        }
+        else
+        {
+            // Development: Allow any origin
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
+                  .AllowAnyHeader();
+        }
     });
 });
 
@@ -167,10 +183,18 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Add Hangfire Dashboard
-app.UseHangfireDashboard("/hangfire", new DashboardOptions
+var hangfireEnabled = builder.Configuration.GetValue<bool>("Hangfire:DashboardEnabled", true);
+var hangfireRequireAuth = builder.Configuration.GetValue<bool>("Hangfire:RequireAuthentication", false);
+
+if (hangfireEnabled)
 {
-    Authorization = new[] { new HangfireAuthorizationFilter() }
-});
+    app.UseHangfireDashboard("/hangfire", new DashboardOptions
+    {
+        Authorization = hangfireRequireAuth
+            ? new[] { new HangfireAuthorizationFilter(requireAuthentication: true) }
+            : new[] { new HangfireAuthorizationFilter(requireAuthentication: false) }
+    });
+}
 
 app.MapControllers();
 
@@ -179,12 +203,47 @@ SignalCopilot.Api.Services.BackgroundJobsService.ConfigureRecurringJobs();
 
 app.Run();
 
-// Simple Hangfire authorization filter for development
+// Hangfire authorization filter
 public class HangfireAuthorizationFilter : IDashboardAuthorizationFilter
 {
+    private readonly bool _requireAuthentication;
+
+    public HangfireAuthorizationFilter(bool requireAuthentication = false)
+    {
+        _requireAuthentication = requireAuthentication;
+    }
+
     public bool Authorize(DashboardContext context)
     {
-        // In production, implement proper authorization
-        return true;
+        if (!_requireAuthentication)
+        {
+            // Development mode: Allow all access
+            return true;
+        }
+
+        // Production mode: Require authentication
+        var httpContext = context.GetHttpContext();
+
+        // Check if user is authenticated via JWT
+        if (httpContext.User?.Identity?.IsAuthenticated == true)
+        {
+            return true;
+        }
+
+        // Optionally: Check for a specific Hangfire dashboard key in headers
+        var dashboardKey = httpContext.Request.Headers["X-Hangfire-Dashboard-Key"].FirstOrDefault();
+        var configuredKey = httpContext.RequestServices
+            .GetRequiredService<IConfiguration>()
+            .GetValue<string>("Hangfire:DashboardKey");
+
+        if (!string.IsNullOrEmpty(dashboardKey) &&
+            !string.IsNullOrEmpty(configuredKey) &&
+            dashboardKey == configuredKey)
+        {
+            return true;
+        }
+
+        // Deny access
+        return false;
     }
 }

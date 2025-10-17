@@ -1,0 +1,19 @@
+version: 1.0
+runtime: dotnet8
+build:
+  commands:
+    pre-build:
+      - echo "Installing dependencies..."
+      - dotnet restore src/SignalCopilot.Api/SignalCopilot.Api.csproj
+    build:
+      - echo "Building application..."
+      - dotnet publish src/SignalCopilot.Api/SignalCopilot.Api.csproj -c Release -o /app/publish
+run:
+  runtime-version: 8.0
+  command: dotnet /app/publish/SignalCopilot.Api.dll
+  network:
+    port: 8080
+    env: ASPNETCORE_URLS=http://+:8080
+  env:
+    - name: ASPNETCORE_ENVIRONMENT
+      value: Production

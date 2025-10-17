@@ -1,0 +1,36 @@
+# Alternative Dockerfile from repository root
+# Use this if deploying from root directory (e.g., Railway auto-detection)
+
+# Stage 1: Build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy csproj and restore
+COPY src/SignalCopilot.Api/SignalCopilot.Api.csproj src/SignalCopilot.Api/
+RUN dotnet restore "src/SignalCopilot.Api/SignalCopilot.Api.csproj"
+
+# Copy everything else and build
+COPY src/SignalCopilot.Api/ src/SignalCopilot.Api/
+WORKDIR /src/src/SignalCopilot.Api
+RUN dotnet build "SignalCopilot.Api.csproj" -c Release -o /app/build
+
+# Stage 2: Publish
+FROM build AS publish
+RUN dotnet publish "SignalCopilot.Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+
+# Stage 3: Runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+WORKDIR /app
+
+# Create non-root user
+RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
+USER appuser
+
+COPY --from=publish /app/publish .
+
+EXPOSE 8080
+
+ENV ASPNETCORE_URLS=http://+:8080
+ENV ASPNETCORE_ENVIRONMENT=Production
+
+ENTRYPOINT ["dotnet", "SignalCopilot.Api.dll"]
