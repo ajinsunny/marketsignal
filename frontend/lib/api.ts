@@ -269,6 +269,10 @@ class ApiClient {
   }
 
   async deleteHolding(id: number): Promise<void> {
+    console.log(`[API] Attempting to delete holding ${id}`);
+    console.log(`[API] Using API URL: ${API_URL}`);
+    console.log(`[API] Token present: ${!!this.getToken()}`);
+
     await this.fetch(`/api/holdings/${id}`, {
       method: 'DELETE',
     });

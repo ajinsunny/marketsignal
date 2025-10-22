@@ -78,9 +78,8 @@ export default function PortfolioContext({
   const activeIntents = Object.values(intentMetrics).filter(m => m.count > 0);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
-      <div className="flex items-center justify-between border-b border-gray-200 pb-4">
-        <h2 className="text-xl font-bold text-gray-900">Portfolio Overview</h2>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between pb-3 border-b border-gray-200">
         <div className="text-2xl font-bold text-blue-600">
           ${metrics.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
         </div>
@@ -133,26 +132,113 @@ export default function PortfolioContext({
           </div>
         )}
 
-        {/* Top 3 Positions */}
+        {/* Top Holdings Pie Chart */}
         {metrics.topConcentrations.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="text-xs font-semibold text-gray-600">Top Holdings</div>
-            {metrics.topConcentrations.map((pos, idx) => (
-              <div key={idx} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">{pos.ticker}</span>
-                <div className="flex items-center gap-2">
-                  <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+
+            {/* Pie Chart */}
+            <div className="flex items-center justify-center">
+              <svg width="180" height="180" viewBox="0 0 180 180" className="transform -rotate-90">
+                {(() => {
+                  const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                  let cumulativePercent = 0;
+
+                  // Calculate total percent from top holdings
+                  const topHoldingsPercent = metrics.topConcentrations.reduce((sum, pos) => sum + pos.exposurePct, 0);
+                  const otherPercent = 1 - topHoldingsPercent;
+
+                  const slices = [];
+
+                  // Render top holdings
+                  metrics.topConcentrations.forEach((pos, idx) => {
+                    const percent = pos.exposurePct;
+                    const startAngle = cumulativePercent * 2 * Math.PI;
+                    const endAngle = (cumulativePercent + percent) * 2 * Math.PI;
+                    cumulativePercent += percent;
+
+                    const x1 = 90 + 70 * Math.cos(startAngle);
+                    const y1 = 90 + 70 * Math.sin(startAngle);
+                    const x2 = 90 + 70 * Math.cos(endAngle);
+                    const y2 = 90 + 70 * Math.sin(endAngle);
+
+                    const largeArcFlag = percent > 0.5 ? 1 : 0;
+
+                    slices.push(
+                      <path
+                        key={idx}
+                        d={`M 90 90 L ${x1} ${y1} A 70 70 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                        fill={colors[idx % colors.length]}
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                    );
+                  });
+
+                  // Render "Other" slice if there are remaining holdings
+                  if (otherPercent > 0.001) {
+                    const startAngle = cumulativePercent * 2 * Math.PI;
+                    const endAngle = 2 * Math.PI;
+
+                    const x1 = 90 + 70 * Math.cos(startAngle);
+                    const y1 = 90 + 70 * Math.sin(startAngle);
+                    const x2 = 90 + 70 * Math.cos(endAngle);
+                    const y2 = 90 + 70 * Math.sin(endAngle);
+
+                    const largeArcFlag = otherPercent > 0.5 ? 1 : 0;
+
+                    slices.push(
+                      <path
+                        key="other"
+                        d={`M 90 90 L ${x1} ${y1} A 70 70 0 ${largeArcFlag} 1 ${x2} ${y2} Z`}
+                        fill="#9CA3AF"
+                        stroke="white"
+                        strokeWidth="2"
+                      />
+                    );
+                  }
+
+                  return slices;
+                })()}
+              </svg>
+            </div>
+
+            {/* Legend */}
+            <div className="grid grid-cols-2 gap-2">
+              {metrics.topConcentrations.map((pos, idx) => {
+                const colors = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+                return (
+                  <div key={idx} className="flex items-center gap-2 text-xs">
                     <div
-                      className="h-full bg-blue-500"
-                      style={{ width: `${Math.min(pos.exposurePct * 100, 100)}%` }}
+                      className="w-3 h-3 rounded-sm flex-shrink-0"
+                      style={{ backgroundColor: colors[idx % colors.length] }}
                     />
+                    <span className="text-gray-700 font-medium">{pos.ticker}</span>
+                    <span className="text-gray-600 ml-auto">
+                      {(pos.exposurePct * 100).toFixed(1)}%
+                    </span>
                   </div>
-                  <span className="text-xs font-semibold text-gray-600 w-12 text-right">
-                    {(pos.exposurePct * 100).toFixed(1)}%
-                  </span>
-                </div>
-              </div>
-            ))}
+                );
+              })}
+              {(() => {
+                const topHoldingsPercent = metrics.topConcentrations.reduce((sum, pos) => sum + pos.exposurePct, 0);
+                const otherPercent = 1 - topHoldingsPercent;
+                if (otherPercent > 0.001) {
+                  return (
+                    <div className="flex items-center gap-2 text-xs">
+                      <div
+                        className="w-3 h-3 rounded-sm flex-shrink-0 bg-gray-400"
+                      />
+                      <span className="text-gray-700 font-medium">Other</span>
+                      <span className="text-gray-600 ml-auto">
+                        {(otherPercent * 100).toFixed(1)}%
+                      </span>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+            </div>
           </div>
         )}
       </div>

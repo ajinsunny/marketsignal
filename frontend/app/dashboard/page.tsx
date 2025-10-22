@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import ProfileSetup from '@/components/ProfileSetup';
 import EvidencePill, { AnalogTooltip } from '@/components/EvidencePill';
 import PortfolioContext from '@/components/PortfolioContext';
+import MarkdownText from '@/components/MarkdownText';
+import ConfirmDialog from '@/components/ConfirmDialog';
 
 export default function Dashboard() {
   const router = useRouter();
@@ -41,6 +43,23 @@ export default function Dashboard() {
     costBasis: '',
     acquiredAt: '',
     intent: 'Hold' as HoldingIntent,
+  });
+
+  // Edit holding state
+  const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState({ shares: '', costBasis: '' });
+
+  // Confirm dialog state
+  const [confirmDialog, setConfirmDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {},
   });
 
   useEffect(() => {
@@ -248,13 +267,59 @@ export default function Dashboard() {
     }
   };
 
-  const handleDeleteHolding = async (id: number) => {
+  const handleDeleteHolding = (id: number) => {
+    const holding = holdings.find(h => h.id === id);
+    if (!holding) return;
+
+    setConfirmDialog({
+      isOpen: true,
+      title: `Delete ${holding.ticker}?`,
+      message: `Are you sure you want to delete this holding?\n\n${holding.shares} shares @ $${holding.costBasis}`,
+      onConfirm: async () => {
+        try {
+          console.log(`Deleting holding with ID: ${id}`);
+          await api.deleteHolding(id);
+          await loadData();
+        } catch (error) {
+          console.error('Failed to delete holding:', error);
+        } finally {
+          setConfirmDialog({ ...confirmDialog, isOpen: false });
+        }
+      },
+    });
+  };
+
+  const handleStartEdit = (holding: Holding) => {
+    setEditingHoldingId(holding.id.toString());
+    setEditValues({
+      shares: holding.shares.toString(),
+      costBasis: holding.costBasis.toString(),
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingHoldingId(null);
+    setEditValues({ shares: '', costBasis: '' });
+  };
+
+  const handleSaveEdit = async (holdingId: number) => {
+    const holding = holdings.find(h => h.id === holdingId);
+    if (!holding) return;
+
     try {
-      await api.deleteHolding(id);
+      await api.updateHolding(
+        holdingId,
+        parseFloat(editValues.shares),
+        parseFloat(editValues.costBasis),
+        holding.acquiredAt,
+        holding.intent
+      );
+      setEditingHoldingId(null);
+      setEditValues({ shares: '', costBasis: '' });
       await loadData();
     } catch (error) {
-      console.error('Failed to delete holding:', error);
-      alert('Failed to delete holding.');
+      console.error('Failed to update holding:', error);
+      alert('Failed to update holding.');
     }
   };
 
@@ -396,7 +461,19 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <>
+      {/* Confirm Dialog */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ ...confirmDialog, isOpen: false })}
+        variant="danger"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+      />
+
       {/* Profile Setup Modal */}
       <ProfileSetup
         isOpen={showProfileSetup}
@@ -404,6 +481,8 @@ export default function Dashboard() {
         currentRiskProfile={profile?.riskProfile}
         currentCashBuffer={profile?.cashBuffer}
       />
+
+      <div className="min-h-screen bg-gray-50">
 
       {/* Header - Sticky */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
@@ -463,20 +542,35 @@ export default function Dashboard() {
       </div>
 
       {/* Main Content - 3 Column Layout */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        {/* 3 Column Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+      <div style={{ maxWidth: '1800px', margin: '0 auto', padding: '1rem' }}>
+        {/* 3 Column Flexbox - PURE inline styles to force horizontal layout */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'row',
+          gap: '1rem',
+          marginBottom: '1rem',
+          width: '100%'
+        }}>
           {/* Column 1: Your Portfolio - Scrollable */}
-          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+          <div className="bg-white rounded-lg shadow flex flex-col flex-shrink-0" style={{ width: '350px', maxHeight: 'calc(100vh - 6rem)' }}>
                 {/* Portfolio Header & Controls */}
                 <div className="p-4 border-b border-gray-200 flex-shrink-0">
                   <div className="flex justify-between items-center mb-3">
                     <h2 className="text-base font-semibold text-gray-900">Your Portfolio</h2>
                     <button
                       onClick={() => setShowAddForm(!showAddForm)}
-                      className="text-blue-500 hover:text-blue-600 text-xl"
+                      className="flex items-center justify-center w-8 h-8 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors shadow-sm"
+                      title={showAddForm ? 'Close form' : 'Add holding'}
                     >
-                      {showAddForm ? '✕' : '+'}
+                      {showAddForm ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      )}
                     </button>
                   </div>
 
@@ -527,7 +621,7 @@ export default function Dashboard() {
                         placeholder="Ticker (e.g., AAPL)"
                         value={newHolding.ticker}
                         onChange={(e) => setNewHolding({ ...newHolding, ticker: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         required
                       />
                       <input
@@ -536,7 +630,7 @@ export default function Dashboard() {
                         step="0.01"
                         value={newHolding.shares}
                         onChange={(e) => setNewHolding({ ...newHolding, shares: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         required
                       />
                       <input
@@ -545,7 +639,7 @@ export default function Dashboard() {
                         step="0.01"
                         value={newHolding.costBasis}
                         onChange={(e) => setNewHolding({ ...newHolding, costBasis: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         required
                       />
                       <label className="block text-xs text-gray-600 mb-1">Acquisition Date (Optional)</label>
@@ -553,13 +647,13 @@ export default function Dashboard() {
                         type="date"
                         value={newHolding.acquiredAt}
                         onChange={(e) => setNewHolding({ ...newHolding, acquiredAt: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 text-sm"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       />
                       <label className="block text-xs text-gray-600 mb-1">Investment Intent</label>
                       <select
                         value={newHolding.intent}
                         onChange={(e) => setNewHolding({ ...newHolding, intent: e.target.value as HoldingIntent })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                       >
                         <option value="Trade">🎯 Trade</option>
                         <option value="Accumulate">📈 Accumulate</option>
@@ -597,40 +691,90 @@ export default function Dashboard() {
                           <div className="flex justify-between items-start mb-2">
                             <div className="flex-1">
                               <p className="font-semibold text-gray-900">{holding.ticker}</p>
-                              <p className="text-sm text-gray-600">
-                                {holding.shares} shares @ ${holding.costBasis}
-                              </p>
+                              {editingHoldingId === holding.id.toString() ? (
+                                <div className="space-y-1 mt-1">
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editValues.shares}
+                                    onChange={(e) => setEditValues({ ...editValues, shares: e.target.value })}
+                                    placeholder="Shares"
+                                    className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400"
+                                  />
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={editValues.costBasis}
+                                    onChange={(e) => setEditValues({ ...editValues, costBasis: e.target.value })}
+                                    placeholder="Cost Basis"
+                                    className="w-full text-xs px-2 py-1 border border-gray-300 rounded bg-white text-gray-900 placeholder:text-gray-400"
+                                  />
+                                  <div className="flex gap-1 mt-1">
+                                    <button
+                                      onClick={() => handleSaveEdit(holding.id)}
+                                      className="flex-1 text-xs px-2 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    >
+                                      Save
+                                    </button>
+                                    <button
+                                      onClick={handleCancelEdit}
+                                      className="flex-1 text-xs px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                                    >
+                                      Cancel
+                                    </button>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm text-gray-600">
+                                    {holding.shares} shares @ ${holding.costBasis}
+                                  </p>
+                                  <button
+                                    onClick={() => handleStartEdit(holding)}
+                                    className="text-xs text-blue-500 hover:text-blue-600"
+                                    title="Edit"
+                                  >
+                                    <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                    </svg>
+                                  </button>
+                                </div>
+                              )}
                             </div>
                             <button
                               onClick={() => handleDeleteHolding(holding.id)}
-                              className="text-red-500 hover:text-red-600"
+                              className="text-red-500 hover:text-red-600 ml-2"
+                              title="Delete"
                             >
-                              🗑️
+                              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                              </svg>
                             </button>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-gray-500">Intent:</label>
-                            <select
-                              value={holding.intent}
-                              onChange={(e) => handleUpdateHoldingIntent(holding.id, e.target.value as HoldingIntent)}
-                              className="text-xs px-2 py-1 border border-gray-300 rounded bg-white hover:border-blue-400 focus:border-blue-500 focus:outline-none"
-                            >
-                              <option value="Trade">🎯 Trade</option>
-                              <option value="Accumulate">📈 Accumulate</option>
-                              <option value="Income">💰 Income</option>
-                              <option value="Hold">🔒 Hold</option>
-                            </select>
-                          </div>
+                          {editingHoldingId !== holding.id.toString() && (
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-500">Intent:</label>
+                              <select
+                                value={holding.intent}
+                                onChange={(e) => handleUpdateHoldingIntent(holding.id, e.target.value as HoldingIntent)}
+                                className="text-xs px-2 py-1 border border-gray-300 rounded bg-white text-gray-900 hover:border-blue-400 focus:border-blue-500 focus:outline-none"
+                              >
+                                <option value="Trade">🎯 Trade</option>
+                                <option value="Accumulate">📈 Accumulate</option>
+                                <option value="Income">💰 Income</option>
+                                <option value="Hold">🔒 Hold</option>
+                              </select>
+                            </div>
+                          )}
                         </div>
                       ))
                     )}
                   </div>
                 </div>
-              </div>
-            </div>
+          </div>
 
           {/* Column 2: Portfolio Overview - Scrollable */}
-          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+          <div className="bg-white rounded-lg shadow flex flex-col flex-1" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
             <div className="p-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-base font-semibold text-gray-900">Portfolio Overview</h2>
             </div>
@@ -651,7 +795,7 @@ export default function Dashboard() {
           </div>
 
           {/* Column 3: Impact Feed - Scrollable */}
-          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+          <div className="bg-white rounded-lg shadow flex flex-col flex-1" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
             {/* Impact Feed Header */}
             <div className="p-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-base font-semibold text-gray-900">Impact Feed</h2>
@@ -672,7 +816,15 @@ export default function Dashboard() {
                 <div className="flex-1 overflow-y-auto p-4">
                       <div className="space-y-4">
                         {impacts.map((impact) => (
-                          <div key={impact.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                          <div
+                            key={impact.id}
+                            onClick={() => impact.article.sourceUrl && window.open(impact.article.sourceUrl, '_blank')}
+                            className={`border border-gray-200 rounded-lg p-4 transition-all ${
+                              impact.article.sourceUrl
+                                ? 'cursor-pointer hover:shadow-lg hover:border-blue-300 hover:bg-blue-50/30'
+                                : ''
+                            } ${impact.impactScore > 0 ? 'bg-green-50/30' : impact.impactScore < 0 ? 'bg-red-50/30' : 'bg-gray-50/30'}`}
+                          >
                             <div className="flex justify-between items-start mb-2">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-bold text-gray-900">{impact.article.ticker}</span>
@@ -696,20 +848,8 @@ export default function Dashboard() {
                               </p>
                             )}
 
-                            <div className="flex justify-between items-center text-xs text-gray-500">
-                              <span>
-                                Exposure: {(impact.exposure * 100).toFixed(1)}% • {impact.article.publisher}
-                              </span>
-                              {impact.article.sourceUrl && (
-                                <a
-                                  href={impact.article.sourceUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-blue-500 hover:text-blue-600"
-                                >
-                                  Read more →
-                                </a>
-                              )}
+                            <div className="text-xs text-gray-500">
+                              Exposure: {(impact.exposure * 100).toFixed(1)}% • {impact.article.publisher}
                             </div>
                           </div>
                         ))}
@@ -722,19 +862,19 @@ export default function Dashboard() {
                     <button
                       onClick={handlePreviousPage}
                       disabled={currentPage === 1}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-500 border border-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:border-gray-300 transition-colors"
                     >
-                      Previous
+                      ← Previous
                     </button>
-                    <span className="text-xs text-gray-700">
+                    <span className="text-sm font-medium text-gray-700">
                       Page {currentPage} of {totalPages}
                     </span>
                     <button
                       onClick={handleNextPage}
                       disabled={currentPage === totalPages}
-                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-500 border border-blue-500 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-gray-300 disabled:border-gray-300 transition-colors"
                     >
-                      Next
+                      Next →
                     </button>
                   </div>
                 )}
@@ -775,7 +915,7 @@ export default function Dashboard() {
                         </div>
                       </div>
 
-                      <p className="text-gray-800 mb-4 leading-relaxed">{analysis.summary.overallAdvice}</p>
+                      <MarkdownText text={analysis.summary.overallAdvice} className="text-gray-800 mb-4 leading-relaxed" />
 
                       {/* Key Actions */}
                       <div className="mb-4">
@@ -806,9 +946,7 @@ export default function Dashboard() {
 
                       {showRationale && (
                         <div className="mt-3 p-4 bg-white rounded border border-blue-200">
-                          <div className="text-sm text-gray-700 whitespace-pre-line">
-                            {analysis.summary.rationale}
-                          </div>
+                          <MarkdownText text={analysis.summary.rationale} className="text-sm text-gray-700" />
                         </div>
                       )}
                     </div>
@@ -887,6 +1025,8 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
+        </div>
       </div>
+    </>
   );
 }
