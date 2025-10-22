@@ -11,9 +11,14 @@ using SignalCopilot.Api.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Get database connection string (supports both local and production configs)
+var connectionString = builder.Configuration["DATABASE_URL"]
+    ?? builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? throw new InvalidOperationException("Database connection string not configured. Set DATABASE_URL environment variable or ConnectionStrings:DefaultConnection in appsettings.json");
+
 // Add database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connectionString));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
@@ -51,10 +56,10 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Add Hangfire
+// Add Hangfire (using same connection string)
 builder.Services.AddHangfire(config =>
     config.UsePostgreSqlStorage(options =>
-        options.UseNpgsqlConnection(builder.Configuration.GetConnectionString("DefaultConnection") ?? string.Empty)));
+        options.UseNpgsqlConnection(connectionString)));
 builder.Services.AddHangfireServer();
 
 // Add application services
