@@ -81,8 +81,7 @@ builder.Services.AddAuthentication(options =>
 
 // Add Hangfire (using same connection string)
 builder.Services.AddHangfire(config =>
-    config.UsePostgreSqlStorage(options =>
-        options.UseNpgsqlConnection(connectionString)));
+    config.UsePostgreSqlStorage(connectionString));
 builder.Services.AddHangfireServer();
 
 // Add application services
