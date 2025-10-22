@@ -599,3 +599,7 @@ tmp/
 !apprunner.yaml
 !.env.example
 !.aws-env.example
+
+# Documentation with potential API keys
+NEWS_API_SETUP.md
+PRODUCTION_API_KEYS.md
