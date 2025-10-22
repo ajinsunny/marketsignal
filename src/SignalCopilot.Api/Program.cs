@@ -39,19 +39,33 @@ Console.WriteLine($"First 50 chars: {connectionString.Substring(0, Math.Min(50, 
 Console.WriteLine($"Starts with 'postgresql://': {connectionString.StartsWith("postgresql://")}");
 
 // Convert PostgreSQL URI to connection string format for Hangfire compatibility
-// Npgsql supports URI format, but Hangfire.PostgreSql might need traditional format
+// Manual parsing needed as NpgsqlConnectionStringBuilder doesn't handle URIs well
 string hangfireConnectionString = connectionString;
-if (connectionString.StartsWith("postgresql://"))
+if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith("postgres://"))
 {
     try
     {
-        var connBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        var uri = new Uri(connectionString.Replace("postgresql://", "postgres://"));
+        var userInfo = uri.UserInfo.Split(':');
+        var connBuilder = new Npgsql.NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.Port > 0 ? uri.Port : 5432,
+            Database = uri.AbsolutePath.TrimStart('/'),
+            Username = userInfo[0],
+            Password = userInfo.Length > 1 ? userInfo[1] : "",
+            SslMode = Npgsql.SslMode.Require,
+            TrustServerCertificate = true
+        };
         hangfireConnectionString = connBuilder.ConnectionString;
-        Console.WriteLine($"Converted to traditional format for Hangfire");
+        Console.WriteLine($"Converted URI to traditional format for Hangfire");
+        Console.WriteLine($"  Host: {connBuilder.Host}");
+        Console.WriteLine($"  Database: {connBuilder.Database}");
     }
     catch (Exception ex)
     {
         Console.WriteLine($"Warning: Could not convert connection string: {ex.Message}");
+        // Fall back to original connection string
     }
 }
 Console.WriteLine($"================================");
