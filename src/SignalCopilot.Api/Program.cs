@@ -45,8 +45,8 @@ if (connectionString.StartsWith("postgresql://"))
 {
     try
     {
-        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
-        hangfireConnectionString = builder.ConnectionString;
+        var connBuilder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        hangfireConnectionString = connBuilder.ConnectionString;
         Console.WriteLine($"Converted to traditional format for Hangfire");
     }
     catch (Exception ex)
