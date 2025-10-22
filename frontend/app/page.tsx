@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import dynamic from 'next/dynamic';
@@ -11,15 +11,26 @@ export default function Home() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
 
+  // Prefetch dashboard for instant navigation
+  useEffect(() => {
+    router.prefetch('/dashboard');
+  }, [router]);
+
   const handleJumpIn = async () => {
     setLoading(true);
+
+    // Start auth in background while navigating
+    const authPromise = api.jumpIn();
+
+    // Navigate immediately for perceived performance
+    router.push('/dashboard');
+
+    // Ensure auth completes
     try {
-      await api.jumpIn();
-      router.push('/dashboard');
+      await authPromise;
     } catch (error) {
-      console.error('Failed to jump in:', error);
-      alert('Failed to start. Please try again.');
-      setLoading(false);
+      console.error('Failed to authenticate:', error);
+      // Dashboard will redirect if auth failed
     }
   };
 
