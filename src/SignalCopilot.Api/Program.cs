@@ -12,9 +12,32 @@ using SignalCopilot.Api.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Get database connection string (supports both local and production configs)
-var connectionString = builder.Configuration["DATABASE_URL"]
-    ?? builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("Database connection string not configured. Set DATABASE_URL environment variable or ConnectionStrings:DefaultConnection in appsettings.json");
+// Try multiple sources in order of precedence
+var connectionString =
+    builder.Configuration["DATABASE_URL"] ??
+    Environment.GetEnvironmentVariable("DATABASE_URL") ??
+    builder.Configuration.GetConnectionString("DefaultConnection");
+
+// Validate and provide detailed error if not found
+if (string.IsNullOrWhiteSpace(connectionString))
+{
+    var envVars = Environment.GetEnvironmentVariables();
+    Console.WriteLine("=== DEBUGGING: Environment variables ===");
+    foreach (var key in envVars.Keys)
+    {
+        if (key.ToString().Contains("DATABASE", StringComparison.OrdinalIgnoreCase))
+        {
+            Console.WriteLine($"{key}: {envVars[key]}");
+        }
+    }
+    throw new InvalidOperationException("Database connection string not configured. Set DATABASE_URL environment variable or ConnectionStrings:DefaultConnection in appsettings.json");
+}
+
+Console.WriteLine($"=== CONNECTION STRING DEBUG ===");
+Console.WriteLine($"Length: {connectionString.Length}");
+Console.WriteLine($"First 50 chars: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}");
+Console.WriteLine($"Starts with 'postgresql://': {connectionString.StartsWith("postgresql://")}");
+Console.WriteLine($"================================");
 
 // Add database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
