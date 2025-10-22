@@ -1,6 +1,7 @@
 # Vercel Frontend Deployment Guide
 
 ## Pre-requisites
+
 - ✅ Backend deployed to Render: https://marketsignal-5qgv.onrender.com
 - ✅ Database connected and migrations applied
 - ✅ GitHub repository: https://github.com/YOUR_USERNAME/marketsignal
@@ -45,11 +46,14 @@ In your Vercel project settings:
 1. Go to **Settings** → **Environment Variables**
 2. Add the following variable:
 
-| Name | Value | Environment |
-|------|-------|-------------|
-| `NEXT_PUBLIC_API_URL` | `https://marketsignal-5qgv.onrender.com` | Production, Preview, Development |
+| Name                  | Value | Environment |
+| --------------------- | ----- | ----------- |
+| `NEXT_PUBLIC_API_URL` | `     |
+
+` | Production, Preview, Development |
 
 **Important Notes:**
+
 - The variable MUST start with `NEXT_PUBLIC_` to be accessible in the browser
 - No trailing slash in the URL
 - Apply to all environments (Production, Preview, Development)
@@ -64,6 +68,7 @@ Wait for the build to complete (usually 1-2 minutes).
 ## Step 5: Get Your Vercel URL
 
 After deployment completes, Vercel will provide:
+
 - **Production URL**: `https://your-project-name.vercel.app`
 - You may also set up a custom domain later
 
@@ -83,22 +88,26 @@ Once you have your Vercel URL, update the backend CORS configuration:
 ## Troubleshooting
 
 ### Build Fails
+
 - Ensure Root Directory is set to `frontend`
 - Check that `NEXT_PUBLIC_API_URL` is set correctly
 - Review build logs in Vercel dashboard
 
 ### API Calls Fail
+
 - Verify `NEXT_PUBLIC_API_URL` has no trailing slash
 - Check browser console for CORS errors
 - Ensure backend CORS includes your Vercel URL
 
 ### Page Not Found
+
 - Ensure Output Directory is `.next` (not `frontend/.next`)
 - Verify Root Directory is `frontend`
 
 ## Expected Result
 
 After successful deployment:
+
 - Frontend accessible at: `https://your-project-name.vercel.app`
 - Backend API at: `https://marketsignal-5qgv.onrender.com`
 - Frontend can communicate with backend

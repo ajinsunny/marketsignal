@@ -558,6 +558,9 @@ credentials.json
 *secret*.txt
 *password*.txt
 *apikey*.txt
+RENDER_ENV_CONFIG.txt
+RENDER_JWT_CONFIG.txt
+RENDER_ENV_VARS.txt
 
 # SSL certificates
 *.pem
