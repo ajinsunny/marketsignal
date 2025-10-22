@@ -896,65 +896,66 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Analysis Content */}
+                    {/* Analysis Content - Two Column Layout */}
                     <div className="p-6">
-                    {/* Portfolio Summary Section */}
-                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-blue-900 mb-1">Overall Portfolio Advice</h3>
-                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                            analysis.summary.marketSentiment.includes('Positive')
-                              ? 'bg-green-100 text-green-800'
-                              : analysis.summary.marketSentiment.includes('Negative')
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
-                          }`}>
-                            {analysis.summary.marketSentiment} Market
-                          </span>
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        {/* LEFT COLUMN: Portfolio Summary Section */}
+                        <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="font-semibold text-blue-900 mb-1">Overall Portfolio Advice</h3>
+                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                                analysis.summary.marketSentiment.includes('Positive')
+                                  ? 'bg-green-100 text-green-800'
+                                  : analysis.summary.marketSentiment.includes('Negative')
+                                  ? 'bg-red-100 text-red-800'
+                                  : 'bg-gray-100 text-gray-800'
+                              }`}>
+                                {analysis.summary.marketSentiment} Market
+                              </span>
+                            </div>
+                          </div>
+
+                          <MarkdownText text={analysis.summary.overallAdvice} className="text-gray-800 mb-4 leading-relaxed" />
+
+                          {/* Key Actions */}
+                          <div className="mb-4">
+                            <h4 className="font-semibold text-sm text-blue-900 mb-2">Recommended Actions:</h4>
+                            <ul className="space-y-2">
+                              {analysis.summary.keyActions.map((action, i) => (
+                                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                                  <span className="text-blue-600 mt-1">•</span>
+                                  <span>{action}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+
+                          {/* Risk Assessment */}
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded">
+                            <h4 className="font-semibold text-sm text-amber-900 mb-1">Risk Assessment:</h4>
+                            <p className="text-sm text-amber-800">{analysis.summary.riskAssessment}</p>
+                          </div>
+
+                          {/* Expandable Rationale */}
+                          <button
+                            onClick={() => setShowRationale(!showRationale)}
+                            className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
+                          >
+                            {showRationale ? '▼' : '▶'} View Detailed Rationale
+                          </button>
+
+                          {showRationale && (
+                            <div className="mt-3 p-4 bg-white rounded border border-blue-200">
+                              <MarkdownText text={analysis.summary.rationale} className="text-sm text-gray-700" />
+                            </div>
+                          )}
                         </div>
-                      </div>
 
-                      <MarkdownText text={analysis.summary.overallAdvice} className="text-gray-800 mb-4 leading-relaxed" />
-
-                      {/* Key Actions */}
-                      <div className="mb-4">
-                        <h4 className="font-semibold text-sm text-blue-900 mb-2">Recommended Actions:</h4>
-                        <ul className="space-y-2">
-                          {analysis.summary.keyActions.map((action, i) => (
-                            <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-                              <span className="text-blue-600 mt-1">•</span>
-                              <span>{action}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      {/* Risk Assessment */}
-                      <div className="p-3 bg-amber-50 border border-amber-200 rounded">
-                        <h4 className="font-semibold text-sm text-amber-900 mb-1">Risk Assessment:</h4>
-                        <p className="text-sm text-amber-800">{analysis.summary.riskAssessment}</p>
-                      </div>
-
-                      {/* Expandable Rationale */}
-                      <button
-                        onClick={() => setShowRationale(!showRationale)}
-                        className="mt-4 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1"
-                      >
-                        {showRationale ? '▼' : '▶'} View Detailed Rationale
-                      </button>
-
-                      {showRationale && (
-                        <div className="mt-3 p-4 bg-white rounded border border-blue-200">
-                          <MarkdownText text={analysis.summary.rationale} className="text-sm text-gray-700" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Individual Recommendations */}
-                    {analysis.recommendations.length > 0 && (
-                      <div>
-                        <h3 className="font-semibold text-gray-900 mb-3">Individual Stock Recommendations</h3>
+                        {/* RIGHT COLUMN: Individual Recommendations */}
+                        {analysis.recommendations.length > 0 && (
+                          <div>
+                            <h3 className="font-semibold text-gray-900 mb-3">Individual Stock Recommendations</h3>
                         <div className="space-y-3">
                           {analysis.recommendations.map((rec, index) => (
                             <div key={index} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -1020,9 +1021,10 @@ export default function Dashboard() {
                             </div>
                           ))}
                         </div>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </div>
                 </div>
               )}
         </div>

@@ -1,5 +1,7 @@
 'use client';
 
+import React from 'react';
+
 /**
  * Simple Markdown Renderer
  *
@@ -19,7 +21,7 @@ export default function MarkdownText({ text, className = '' }: MarkdownTextProps
   const paragraphs = text.split('\n\n').filter(p => p.trim());
 
   const renderInlineMarkdown = (line: string) => {
-    const parts: (string | JSX.Element)[] = [];
+    const parts: (string | React.ReactElement)[] = [];
     let lastIndex = 0;
 
     // Match **bold** text
