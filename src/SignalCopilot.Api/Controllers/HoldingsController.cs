@@ -36,6 +36,7 @@ public class HoldingsController : ControllerBase
     {
         var userId = GetUserId();
         var holdings = await _context.Holdings
+            .AsNoTracking()
             .Where(h => h.UserId == userId)
             .OrderBy(h => h.Ticker)
             .ToListAsync();

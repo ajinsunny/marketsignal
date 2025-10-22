@@ -36,6 +36,7 @@ public class PortfolioAnalytics : IPortfolioAnalytics
     public async Task<PortfolioMetrics> GetPortfolioMetricsAsync(string userId)
     {
         var holdings = await _context.Holdings
+            .AsNoTracking()
             .Where(h => h.UserId == userId)
             .ToListAsync();
 
@@ -198,16 +199,63 @@ public class PortfolioAnalytics : IPortfolioAnalytics
     }
 
     /// <summary>
-    /// Get metrics for all intents at once
+    /// Get metrics for all intents at once - OPTIMIZED to use single database query
     /// </summary>
     public async Task<Dictionary<HoldingIntent, IntentMetrics>> GetAllIntentMetricsAsync(string userId)
     {
+        // Single query to get all holdings with AsNoTracking for better performance
+        var allHoldings = await _context.Holdings
+            .AsNoTracking()
+            .Where(h => h.UserId == userId)
+            .Select(h => new
+            {
+                h.Intent,
+                h.Shares,
+                h.CostBasis,
+                h.AcquiredAt
+            })
+            .ToListAsync();
+
+        var totalPortfolioValue = allHoldings.Sum(h => h.Shares * (h.CostBasis ?? 0));
+
         var allIntents = Enum.GetValues<HoldingIntent>();
         var result = new Dictionary<HoldingIntent, IntentMetrics>();
 
+        // Calculate all metrics in-memory from single query result
         foreach (var intent in allIntents)
         {
-            result[intent] = await GetIntentMetricsAsync(userId, intent);
+            var intentHoldings = allHoldings.Where(h => h.Intent == intent).ToList();
+
+            if (!intentHoldings.Any())
+            {
+                result[intent] = new IntentMetrics
+                {
+                    Intent = intent,
+                    Count = 0,
+                    TotalValue = 0,
+                    AverageExposure = 0,
+                    AverageHoldingPeriodDays = 0
+                };
+                continue;
+            }
+
+            var intentValue = intentHoldings.Sum(h => h.Shares * (h.CostBasis ?? 0));
+            var avgExposure = totalPortfolioValue > 0 ? intentValue / totalPortfolioValue : 0;
+
+            var avgHoldingPeriod = intentHoldings
+                .Where(h => h.AcquiredAt.HasValue)
+                .Select(h => (DateTime.UtcNow - h.AcquiredAt!.Value).Days)
+                .DefaultIfEmpty(0)
+                .Average();
+
+            result[intent] = new IntentMetrics
+            {
+                Intent = intent,
+                Count = intentHoldings.Count,
+                TotalValue = intentValue,
+                AverageExposure = avgExposure,
+                AverageHoldingPeriodDays = (int)avgHoldingPeriod
+            };
         }
 
         return result;

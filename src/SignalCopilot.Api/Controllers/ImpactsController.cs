@@ -33,6 +33,7 @@ public class ImpactsController : ControllerBase
         var userId = GetUserId();
 
         var query = _context.Impacts
+            .AsNoTracking()
             .Include(i => i.Article)
             .Include(i => i.Holding)
             .Where(i => i.UserId == userId);
@@ -95,6 +96,7 @@ public class ImpactsController : ControllerBase
         var threshold = 0.7m; // Can be configured from settings
 
         var impacts = await _context.Impacts
+            .AsNoTracking()
             .Include(i => i.Article)
             .ThenInclude(a => a.Signal)
             .Include(i => i.Holding)
