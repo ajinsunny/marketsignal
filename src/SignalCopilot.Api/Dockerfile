@@ -21,10 +21,6 @@ RUN dotnet publish "SignalCopilot.Api.csproj" -c Release -o /app/publish /p:UseA
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
 WORKDIR /app
 
-# Install Entity Framework Core tools for migrations
-RUN dotnet tool install --global dotnet-ef --version 8.0.11
-ENV PATH="$PATH:/root/.dotnet/tools"
-
 # Create non-root user for security
 RUN useradd -m -u 1001 appuser && chown -R appuser:appuser /app
 USER appuser
