@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
+import dynamic from 'next/dynamic';
+
+const Silk = dynamic(() => import('@/components/Silk'), { ssr: false });
 
 export default function Home() {
   const router = useRouter();
@@ -21,39 +24,27 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 flex items-center justify-center p-4">
-      <div className="max-w-4xl mx-auto text-center">
+    <div className="relative min-h-screen flex items-center justify-center p-4 overflow-hidden">
+      {/* Silk Background */}
+      <div className="absolute inset-0 z-0">
+        <Silk color="#29ff9b" speed={5} scale={1} noiseIntensity={1.5} rotation={0} />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 max-w-4xl mx-auto text-center">
         <div className="mb-8">
-          <h1 className="text-6xl font-bold text-white mb-4">
-            Signal Copilot
+          <h1 className="text-6xl font-bold text-white mb-4 drop-shadow-lg">
+            Market Signal
           </h1>
-          <p className="text-xl text-blue-200 mb-2">
-            Financial News →  Personalized Impact Alerts
+          <p className="text-xl text-white/90 mb-2 drop-shadow">
+            Financial News → Personalized Impact Alerts
           </p>
-          <p className="text-sm text-blue-300/70">
+          <p className="text-sm text-white/70 drop-shadow">
             Filter market noise. Focus on what matters to your portfolio.
           </p>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-white/20">
-          <div className="grid md:grid-cols-3 gap-6 mb-8">
-            <div className="text-center">
-              <div className="text-4xl mb-2">📰</div>
-              <h3 className="text-lg font-semibold text-white mb-1">News Ingestion</h3>
-              <p className="text-sm text-blue-200">Real-time financial headlines for your holdings</p>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl mb-2">🎯</div>
-              <h3 className="text-lg font-semibold text-white mb-1">Impact Scoring</h3>
-              <p className="text-sm text-blue-200">Personalized relevance based on your exposure</p>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl mb-2">🔔</div>
-              <h3 className="text-lg font-semibold text-white mb-1">Smart Alerts</h3>
-              <p className="text-sm text-blue-200">High-impact events + daily digests</p>
-            </div>
-          </div>
-
+        <div className="bg-white/10 backdrop-blur-lg rounded-2xl p-8 mb-8 border border-white/20 shadow-2xl">
           <button
             onClick={handleJumpIn}
             disabled={loading}
@@ -63,7 +54,7 @@ export default function Home() {
           </button>
         </div>
 
-        <div className="text-xs text-blue-300/50">
+        <div className="text-xs text-white/60 drop-shadow">
           <p className="mb-2">
             Impact Score = direction × magnitude × confidence × exposure
           </p>
