@@ -70,9 +70,9 @@ if (connectionString.StartsWith("postgresql://") || connectionString.StartsWith(
 }
 Console.WriteLine($"================================");
 
-// Add database context
+// Add database context (use converted connection string for consistency)
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseNpgsql(connectionString));
+    options.UseNpgsql(hangfireConnectionString));
 
 // Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>(options =>
