@@ -462,13 +462,12 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* Main Content - Normal Scrollable Layout */}
+      {/* Main Content - 3 Column Layout */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Portfolio Section - Fixed Width Sidebar with Max Height */}
-          <div className="w-full lg:w-80 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow sticky top-20 flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
-
+        {/* 3 Column Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-4">
+          {/* Column 1: Your Portfolio - Scrollable */}
+          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
                 {/* Portfolio Header & Controls */}
                 <div className="p-4 border-b border-gray-200 flex-shrink-0">
                   <div className="flex justify-between items-center mb-3">
@@ -630,37 +629,47 @@ export default function Dashboard() {
               </div>
             </div>
 
-            {/* Right Column - Main Content (Normal Scrolling) */}
-            <div className="flex-1 space-y-4">
-              {/* Portfolio Overview */}
-              {portfolioMetrics && intentMetrics && holdings.length > 0 && (
+          {/* Column 2: Portfolio Overview - Scrollable */}
+          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-base font-semibold text-gray-900">Portfolio Overview</h2>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {portfolioMetrics && intentMetrics && holdings.length > 0 ? (
                 <PortfolioContext
                   metrics={portfolioMetrics}
                   intentMetrics={intentMetrics}
                   riskProfile={profile?.riskProfile}
                   cashBuffer={profile?.cashBuffer}
                 />
+              ) : (
+                <p className="text-gray-500 text-center py-8 text-sm">
+                  Add holdings to see portfolio analysis
+                </p>
               )}
-              {/* Impact Feed Section */}
-              <div className="bg-white rounded-lg shadow">
-                {/* Impact Feed Header */}
-                <div className="p-6 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Impact Feed</h2>
-                </div>
+            </div>
+          </div>
 
-                {impacts.length === 0 ? (
-                  <div className="p-12">
-                    <div className="text-center">
-                      <p className="text-gray-500 mb-4">No impacts yet.</p>
-                      <p className="text-sm text-gray-400">
-                        Add holdings to see personalized impact scores. News is fetched automatically!
-                      </p>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    {/* Impacts List */}
-                    <div className="p-6">
+          {/* Column 3: Impact Feed - Scrollable */}
+          <div className="bg-white rounded-lg shadow flex flex-col" style={{ maxHeight: 'calc(100vh - 6rem)' }}>
+            {/* Impact Feed Header */}
+            <div className="p-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-base font-semibold text-gray-900">Impact Feed</h2>
+            </div>
+
+            {impacts.length === 0 ? (
+              <div className="p-8 flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <p className="text-gray-500 mb-2 text-sm">No impacts yet.</p>
+                  <p className="text-xs text-gray-400">
+                    Add holdings to see personalized impact scores. News is fetched automatically!
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Impacts List - Scrollable */}
+                <div className="flex-1 overflow-y-auto p-4">
                       <div className="space-y-4">
                         {impacts.map((impact) => (
                           <div key={impact.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
@@ -707,33 +716,34 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* Pagination */}
-                    {totalPages > 1 && (
-                      <div className="flex items-center justify-between border-t border-gray-200 p-6">
-                        <button
-                          onClick={handlePreviousPage}
-                          disabled={currentPage === 1}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Previous
-                        </button>
-                        <span className="text-sm text-gray-700">
-                          Page {currentPage} of {totalPages}
-                        </span>
-                        <button
-                          onClick={handleNextPage}
-                          disabled={currentPage === totalPages}
-                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    )}
-                  </>
+                {/* Pagination - Fixed at bottom */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between border-t border-gray-200 p-4 flex-shrink-0">
+                    <button
+                      onClick={handlePreviousPage}
+                      disabled={currentPage === 1}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Previous
+                    </button>
+                    <span className="text-xs text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <button
+                      onClick={handleNextPage}
+                      disabled={currentPage === totalPages}
+                      className="px-3 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Next
+                    </button>
+                  </div>
                 )}
-              </div>
+              </>
+            )}
+          </div>
+        </div>
 
-              {/* Portfolio Analysis Section */}
+        {/* Portfolio Analysis Section - Below 3 Columns */}
               {analysis && analysis.summary && (
                 <div className="bg-white rounded-lg shadow">
                     {/* Analysis Header */}
@@ -877,9 +887,6 @@ export default function Dashboard() {
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        </div>
       </div>
   );
 }
