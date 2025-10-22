@@ -37,6 +37,23 @@ Console.WriteLine($"=== CONNECTION STRING DEBUG ===");
 Console.WriteLine($"Length: {connectionString.Length}");
 Console.WriteLine($"First 50 chars: {connectionString.Substring(0, Math.Min(50, connectionString.Length))}");
 Console.WriteLine($"Starts with 'postgresql://': {connectionString.StartsWith("postgresql://")}");
+
+// Convert PostgreSQL URI to connection string format for Hangfire compatibility
+// Npgsql supports URI format, but Hangfire.PostgreSql might need traditional format
+string hangfireConnectionString = connectionString;
+if (connectionString.StartsWith("postgresql://"))
+{
+    try
+    {
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+        hangfireConnectionString = builder.ConnectionString;
+        Console.WriteLine($"Converted to traditional format for Hangfire");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Could not convert connection string: {ex.Message}");
+    }
+}
 Console.WriteLine($"================================");
 
 // Add database context
@@ -79,9 +96,9 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// Add Hangfire (using same connection string)
+// Add Hangfire (using converted connection string for compatibility)
 builder.Services.AddHangfire(config =>
-    config.UsePostgreSqlStorage(connectionString));
+    config.UsePostgreSqlStorage(hangfireConnectionString));
 builder.Services.AddHangfireServer();
 
 // Add application services
