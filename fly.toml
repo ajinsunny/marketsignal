@@ -1,0 +1,84 @@
+# Fly.io Configuration for Signal Copilot Backend
+# Deploy with: fly deploy
+
+app = "signalcopilot-api"
+primary_region = "iad" # US East (change to ewr, ord, sjc, etc. as needed)
+kill_signal = "SIGTERM"
+kill_timeout = "30s"
+
+[experimental]
+  auto_rollback = true
+
+[build]
+  dockerfile = "src/SignalCopilot.Api/Dockerfile"
+
+[deploy]
+  strategy = "rolling"
+
+[env]
+  ASPNETCORE_ENVIRONMENT = "Production"
+  ASPNETCORE_URLS = "http://0.0.0.0:8080"
+  JWT_ISSUER = "SignalCopilot.Api"
+  JWT_AUDIENCE = "SignalCopilot.Client"
+  JWT_EXPIRATION_MINUTES = "1440"
+  SENDGRID_FROM_EMAIL = "noreply@signalcopilot.com"
+  SENDGRID_FROM_NAME = "Signal Copilot"
+  SECEDGAR_ENABLED = "true"
+  SECEDGAR_CONTACT_EMAIL = "noreply@signalcopilot.com"
+  ALERT_HIGH_IMPACT_THRESHOLD = "0.7"
+  ALERT_DAILY_DIGEST_TIME = "09:00"
+  HANGFIRE_WORKER_COUNT = "5"
+
+# HTTP service configuration
+[[services]]
+  protocol = "tcp"
+  internal_port = 8080
+  processes = ["app"]
+
+  [[services.ports]]
+    port = 80
+    handlers = ["http"]
+    force_https = true
+
+  [[services.ports]]
+    port = 443
+    handlers = ["tls", "http"]
+
+  [services.concurrency]
+    type = "connections"
+    hard_limit = 100
+    soft_limit = 80
+
+  # Health check configuration
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "10s"
+    grace_period = "10s"
+
+  [[services.http_checks]]
+    interval = "60s"
+    timeout = "10s"
+    grace_period = "10s"
+    method = "GET"
+    path = "/api/health"
+    protocol = "http"
+    tls_skip_verify = false
+
+# Resource allocation
+[vm]
+  cpu_kind = "shared"
+  cpus = 1
+  memory_mb = 512
+
+# Secrets (set with: fly secrets set KEY=value)
+# Required secrets:
+# - DATABASE_URL
+# - JWT_SECRET
+# - ALLOWED_ORIGINS
+# - SENDGRID_API_KEY
+# - HANGFIRE_DASHBOARD_PASSWORD
+# Optional:
+# - NEWSAPI_KEY
+# - FINNHUB_API_KEY
+# - ALPHAVANTAGE_API_KEY
+# - OPENAI_API_KEY

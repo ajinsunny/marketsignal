@@ -1,0 +1,65 @@
+# Render Blueprint for Signal Copilot
+# This file defines infrastructure as code for Render.com
+# Deploy with: render blueprint sync
+
+services:
+  # Backend API + Hangfire Worker
+  - type: web
+    name: signalcopilot-api
+    runtime: docker
+    dockerfilePath: ./src/SignalCopilot.Api/Dockerfile
+    dockerContext: .
+    region: oregon # or ohio
+    plan: starter # free, starter ($7), standard ($25)
+    branch: master
+    healthCheckPath: /api/health
+    envVars:
+      - key: ASPNETCORE_ENVIRONMENT
+        value: Production
+      - key: ASPNETCORE_URLS
+        value: http://0.0.0.0:8080
+      - key: DATABASE_URL
+        sync: false # Must be set manually in Render dashboard
+      - key: JWT_SECRET
+        generateValue: true # Auto-generates secure secret
+      - key: JWT_ISSUER
+        value: SignalCopilot.Api
+      - key: JWT_AUDIENCE
+        value: SignalCopilot.Client
+      - key: JWT_EXPIRATION_MINUTES
+        value: 1440
+      - key: ALLOWED_ORIGINS
+        sync: false # Must be set manually
+      - key: SENDGRID_API_KEY
+        sync: false # Must be set manually
+      - key: SENDGRID_FROM_EMAIL
+        value: noreply@signalcopilot.com
+      - key: SENDGRID_FROM_NAME
+        value: Signal Copilot
+      - key: NEWSAPI_ENABLED
+        value: false
+      - key: FINNHUB_ENABLED
+        value: false
+      - key: SECEDGAR_ENABLED
+        value: true
+      - key: SECEDGAR_CONTACT_EMAIL
+        value: noreply@signalcopilot.com
+      - key: ALERT_HIGH_IMPACT_THRESHOLD
+        value: 0.7
+      - key: ALERT_DAILY_DIGEST_TIME
+        value: 09:00
+      - key: HANGFIRE_WORKER_COUNT
+        value: 5
+      - key: HANGFIRE_DASHBOARD_PASSWORD
+        generateValue: true # Auto-generates secure password
+
+# Databases (if using Render's managed Postgres instead of Neon)
+# databases:
+#   - name: signalcopilot-db
+#     region: oregon
+#     plan: starter # free, starter ($7), standard ($50)
+#     databaseName: signalcopilot
+#     user: signalcopilot_user
+
+# Note: Frontend (Next.js) should be deployed separately on Vercel
+# Note: Neon/Supabase is recommended over Render's Postgres for better free tier
