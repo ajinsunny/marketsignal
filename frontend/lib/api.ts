@@ -303,6 +303,11 @@ class ApiClient {
     return await response.json();
   }
 
+  // Market Data
+  async getMarketPrice(ticker: string): Promise<{ ticker: string; price: number; timestamp: string }> {
+    return await this.fetch(`/api/market/price/${ticker.toUpperCase()}`);
+  }
+
   // Impacts
   async getImpacts(page: number = 1, pageSize: number = 20): Promise<ImpactsResponse> {
     return await this.fetch(`/api/impacts?page=${page}&pageSize=${pageSize}`);

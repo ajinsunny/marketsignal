@@ -153,6 +153,11 @@ builder.Services.AddScoped<SignalCopilot.Api.Services.BackgroundJobsService>();
 // PHASE 4A: Historical analogs service for evidence-based recommendations
 builder.Services.AddScoped<SignalCopilot.Api.Services.IHistoricalAnalogService, SignalCopilot.Api.Services.HistoricalAnalogService>();
 
+// Market data service for real-time pricing (used for auto-calculating cost basis)
+builder.Services.AddMemoryCache(); // Add caching support
+builder.Services.AddHttpClient<SignalCopilot.Api.Services.IMarketDataService, SignalCopilot.Api.Services.AlpacaMarketDataService>();
+builder.Services.AddScoped<SignalCopilot.Api.Services.IMarketDataService, SignalCopilot.Api.Services.AlpacaMarketDataService>();
+
 // Add controllers with JSON configuration for enums
 builder.Services.AddControllers()
     .AddJsonOptions(options =>

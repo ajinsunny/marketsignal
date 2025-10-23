@@ -44,6 +44,9 @@ export default function Dashboard() {
     acquiredAt: '',
     intent: 'Hold' as HoldingIntent,
   });
+  const [fetchingPrice, setFetchingPrice] = useState(false);
+  const [priceError, setPriceError] = useState<string | null>(null);
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
 
   // Edit holding state
   const [editingHoldingId, setEditingHoldingId] = useState<string | null>(null);
@@ -65,6 +68,46 @@ export default function Dashboard() {
   useEffect(() => {
     loadData();
   }, [currentPage]);
+
+  // Auto-fetch price when ticker and shares are entered
+  useEffect(() => {
+    const fetchPrice = async () => {
+      const ticker = newHolding.ticker.trim().toUpperCase();
+      const shares = parseFloat(newHolding.shares);
+
+      // Only fetch if we have both ticker and shares, and ticker is at least 1 char
+      if (ticker.length > 0 && !isNaN(shares) && shares > 0) {
+        setFetchingPrice(true);
+        setPriceError(null);
+
+        try {
+          const priceData = await api.getMarketPrice(ticker);
+          setCurrentPrice(priceData.price);
+
+          // Auto-calculate cost basis: shares × price
+          const calculatedCostBasis = (shares * priceData.price).toFixed(2);
+          setNewHolding(prev => ({ ...prev, costBasis: calculatedCostBasis }));
+        } catch (error) {
+          console.error('Failed to fetch price:', error);
+          setPriceError('Unable to fetch price. Please enter manually.');
+          setCurrentPrice(null);
+        } finally {
+          setFetchingPrice(false);
+        }
+      } else {
+        // Reset price state if inputs are incomplete
+        setCurrentPrice(null);
+        setPriceError(null);
+      }
+    };
+
+    // Debounce the API call to avoid too many requests while typing
+    const timer = setTimeout(() => {
+      fetchPrice();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [newHolding.ticker, newHolding.shares]);
 
   const loadProfile = async () => {
     try {
@@ -234,6 +277,9 @@ export default function Dashboard() {
         newHolding.intent
       );
       setNewHolding({ ticker: '', shares: '', costBasis: '', acquiredAt: '', intent: 'Hold' });
+      setCurrentPrice(null);
+      setPriceError(null);
+      setFetchingPrice(false);
       setShowAddForm(false);
       await loadData();
 
@@ -633,15 +679,32 @@ export default function Dashboard() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
                         required
                       />
-                      <input
-                        type="number"
-                        placeholder="Cost Basis ($)"
-                        step="0.01"
-                        value={newHolding.costBasis}
-                        onChange={(e) => setNewHolding({ ...newHolding, costBasis: e.target.value })}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md mb-2 bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                        required
-                      />
+                      <div className="mb-2">
+                        <div className="relative">
+                          <input
+                            type="number"
+                            placeholder="Cost Basis ($)"
+                            step="0.01"
+                            value={newHolding.costBasis}
+                            onChange={(e) => setNewHolding({ ...newHolding, costBasis: e.target.value })}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md bg-white text-gray-900 placeholder:text-gray-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            required
+                          />
+                          {fetchingPrice && (
+                            <div className="absolute right-3 top-2.5">
+                              <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                            </div>
+                          )}
+                        </div>
+                        {currentPrice && !fetchingPrice && (
+                          <p className="text-xs text-green-600 mt-1">
+                            ✓ Auto-calculated: {newHolding.shares} shares × ${currentPrice.toFixed(2)}/share
+                          </p>
+                        )}
+                        {priceError && (
+                          <p className="text-xs text-amber-600 mt-1">{priceError}</p>
+                        )}
+                      </div>
                       <label className="block text-xs text-gray-600 mb-1">Acquisition Date (Optional)</label>
                       <input
                         type="date"
